@@ -1,5 +1,6 @@
 import tensorflow as tf
-
+import typing
+mse = tf.losses.mean_squared_error
 
 # MG2033/A2C @ github.com
 class BasePolicy:
@@ -63,12 +64,110 @@ class Policy(BasePolicy):
                                         self.exploration_rate: exploration_rate + 1e-3})
 
 
-
 class Model:
-    def __init__(self, ):
+    def __init__(self, sess,
+                 entropy_coeff=0.01,
+                 value_function_coeff=0.5,
+                 max_gradient_norm=1,
+                 optimizer_params=None,
+                 args=None):
+        self.actions = None
+        self.advantage = None
+        self.reward = None
+        self.policy_gradient_loss = None
+        self.value_function_loss = None
+        self.optimize = None
+        self.entropy = None
+        self.loss = None
+        self.learning_rate = None
+        self.num_actions = None
+        self.input_spec = None
+        self.output_spec = None
+
+        self.policy = Policy
+        self.sess = sess
+        self.value_function_coeff = value_function_coeff
+        self.entropy_coeff = entropy_coeff
+        self.max_gradient_norm = max_gradient_norm
+        self.optimizer_params = optimizer_params
+
+    def init_input(self):
+        with tf.name_scope('input'):
+            self.actions = tf.placeholder(tf.int32, [None])
+            self.advantage = tf.placeholder(tf.float32, [None])
+            self.reward = tf.placeholder(tf.float32, [None])
+            self.learning_rate = tf.placeholder(tf.float32, [None])
+
+    def init_network(self):
+        self.policy = self.policy(self.sess, self.input_spec, self.output_spec)
+        with tf.variable_scope('train_output'):
+            negative_log_prob_action = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                logits=self.policy.policy_fn,
+                labels=self.actions)
+            self.policy_gradient_loss = tf.reduce_mean(self.advantage * negative_log_prob_action)
+            self.value_function_loss = mse(self.reward, tf.squeeze(self.policy.value_fn))
+            self.entropy = tf.reduce_sum(tf.exp(self.policy.policy_fn)*self.policy.policy_fn, axis=1)
+            self.loss = self.policy_gradient_loss \
+                - self.entropy_coeff * self.entropy \
+                + self.value_function_coeff * self.value_function_loss
+
+            with tf.variable_scope("policy"):
+                params = tf.trainable_variables()
+            grads = tf.gradients(self.loss, params)
+
+            # gradient clipping
+            if self.max_gradient_norm is not None:
+                grads, grad_norm = tf.clip_by_global_norm(grads, self.max_gradient_norm)
+
+            grads = list(zip(grads, params))
+            optimizer = tf.train.AdamOptimizer(**self.optimizer_params)
+            self.optimize = optimizer.apply_gradients(grads)
+
+    def build(self, input_spec, output_spec):
+        self.output_spec = output_spec
+        self.input_spec = input_spec
+        self.init_input()
+        self.init_network()
+
+
+class BaseTrainer:
+    def __init__(self, sess, model, args):
+        self.model = model
+        self.args = args
+        self.sess = sess
+
+        self.summary_placeholders = {}
+        self.summary_ops = {}
+
+        self.__init_global_saver()
+
+    def save(self):
+        print("Saving model...")
+        self.saver.save(self.sess, self.args.checkpoint_dir)
+
+    def __init_global_saver(self):
+        self.saver = tf.train.Saver(max_to_keep=self.args.max_to_keep)
+        self.summary_writer = tf.summary.FileWriter(self.args.summary_dir, self.sess.graph)
+
+    def __init_model(self):
+        self.init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+        self.sess.run(self.init)
+
+    def __load_model(self):
+        latest_checkpoint = tf.train.latest_checkpoint(self.args.checkpoint_dir)
+        if latest_checkpoint:
+            print("Loading model checkpoint {} ...\n".format(latest_checkpoint))
+            self.saver.restore(self.sess, latest_checkpoint)
+            print("Checkpoint loaded\n\n")
+        else:
+            print("No checkpoints available!\n\n")
+
+
+class Trainer(BaseTrainer):
+    def __init__(self, sess, model, args):
         pass
 
 
 class A2C:
-    def __init__(self, input_spec, action_spec):
+    def __init__(self, input_spec, action_spec: typing.List[int]):
         pass
