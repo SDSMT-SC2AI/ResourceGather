@@ -1,24 +1,24 @@
-## chris-chris/pysc2-examples @ github.com
+## based on chris-chris/pysc2-examples @ github.com
 import numpy as np
 from multiprocessing import Process, Pipe
 from baselines.common.vec_env import VecEnv
 from pysc2.env import environment
 from pysc2.env import sc2_env
-from pysc2.lib import features, actions
-
-_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
-_SELECTED = features.SCREEN_FEATURES.selected.index
-
-from common import common
 
 
-def worker(remote, map_name, nscripts, i):
+def worker(remote, agent, map_name, flags, i):
     with sc2_env.SC2Env(
             map_name=map_name,
-            step_mul=2,
-            screen_size_px=(32, 32),
-            minimap_size_px=(32, 32)) as env:
-        available_actions = []
+            agent_race=flags.agent_race,
+            bot_race=flags.bot_race,
+            difficulty=flags.difficulty,
+            step_mul=flags.step_mul,
+            game_steps_per_episode=flags.game_steps_per_episode,
+            screen_size_px=(flags.screen_resolution, flags.screen_resolution),
+            minimap_size_px=(flags.minimap_resolution, flags.minimap_resolution),
+            visualize=False
+    ) as env:
+        #available_actions = []
         result = None
         group_list = []
         xy_per_marine = {}
@@ -122,6 +122,7 @@ def worker(remote, map_name, nscripts, i):
                 remote.send((ob, reward, done, info, army_count,
                              control_groups, selected, xy_per_marine))
             elif cmd == 'close':
+                print("worker", i, "finished")
                 remote.close()
                 break
             elif cmd == 'get_spaces':
@@ -133,18 +134,14 @@ def worker(remote, map_name, nscripts, i):
 
 
 class SubprocVecEnv(VecEnv):
-    def __init__(self, nenvs, nscripts, map_name):
-        """
-    envs: list of gym environments to run in subprocesses
-    """
-
-        self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
+    def __init__(self, num_envs, map_name, flags):
+        self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(num_envs)])
 
         self.ps = []
         i = 0
         for (work_remote,) in zip(self.work_remotes, ):
             self.ps.append(
-                Process(target=worker, args=(work_remote, map_name, nscripts, i)))
+                Process(target=worker, args=(work_remote, map_name, flags, i)))
             i += 1
 
         #
@@ -192,6 +189,4 @@ class SubprocVecEnv(VecEnv):
 
     @property
     def num_envs(self):
-
-
-return len(self.remotes)
+        return len(self.remotes)
