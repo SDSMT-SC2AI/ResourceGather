@@ -1,12 +1,21 @@
 ## based on chris-chris/pysc2-examples @ github.com
 import numpy as np
+from argparse import Namespace
 from multiprocessing import Process, Pipe
 from baselines.common.vec_env import VecEnv
 from pysc2.env import environment
 from pysc2.env import sc2_env
 
-
 def worker(remote, agent, map_name, flags, i):
+    def step(d):
+        parent = Namespace(d)
+        parent.reward = 0
+        result = env.step(actions=parent.data)
+        parent.reward += parent.results[0]
+        parent.done = results[0].step_type == environment.StepType.LAST
+
+
+
     with sc2_env.SC2Env(
             map_name=map_name,
             agent_race=flags.agent_race,
@@ -18,10 +27,8 @@ def worker(remote, agent, map_name, flags, i):
             minimap_size_px=(flags.minimap_resolution, flags.minimap_resolution),
             visualize=False
     ) as env:
-        #available_actions = []
-        result = None
-        group_list = []
-        xy_per_marine = {}
+        total_frams = 0
+
         while True:
             cmd, data = remote.recv()
             if cmd == 'step':
