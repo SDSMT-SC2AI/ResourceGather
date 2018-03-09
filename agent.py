@@ -2,8 +2,14 @@ import tensorflow as tf
 import actions
 import observer
 import network
-hidden_layer_size = (observer.observation_size + len(actions.action_space))//2
+hidden_layer_size = (3*observer.observation_size)//2
 
+
+network_spec = {
+            "input size": observer.observation_size,
+            "hidden layer size": hidden_layer_size,
+            "number of actions": len(actions.action_space)
+        }
 
 # Copies one set of variables to another.
 # Used to set worker network parameters to those of global network.
@@ -18,11 +24,7 @@ def update_target_graph(from_scope, to_scope):
 
 class Smart:
     def __init__(self, name, parent, optimizer):
-        self.network_spec = {
-            "input size": observer.observation_size,
-            "hidden layer size": hidden_layer_size,
-            "number of actions": len(actions.action_space)
-        }
+        self.network_spec = network_spec
         self.policy = network.Policy(name, self.network_spec)
         self.trainer = network.Trainer(name, optimizer, self.policy)
         self.update_local_policy = update_target_graph(parent, name)

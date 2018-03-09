@@ -2,8 +2,8 @@ import tensorflow as tf
 import numpy as np
 import scipy.signal
 import observer
+import main
 from pysc2.env import sc2_env
-
 mse = tf.losses.mean_squared_error
 
 
@@ -79,7 +79,7 @@ class Worker:
                 episode_step_count = 0
 
                 # Start new episode
-                env_obs = self.env.reset()
+                env_obs = self.env.reset()[0]
                 reward, obs, episode_end = observer.process_observation(env_obs, self.flags)
 
                 while not episode_end:
@@ -107,17 +107,16 @@ class Worker:
                 self.episode_mean_values.append(np.mean(episode_values))
                 episode_count += 1
 
-                global _max_score, _running_avg_score, _episodes, _steps
-                if _max_score < episode_reward:
-                    _max_score = episode_reward
-                _running_avg_score = (2.0 / 101) * (episode_reward - _running_avg_score) + _running_avg_score
-                _episodes[self.number] = episode_count
-                _steps[self.number] = total_steps
+                if main._max_score < episode_reward:
+                    main._max_score = episode_reward
+                main._running_avg_score = (2.0 / 101) * (episode_reward - main._running_avg_score) + main._running_avg_score
+                main._episodes[self.number] = episode_count
+                main._steps[self.number] = total_steps
 
                 print(
                     "{} Step #{} Episode #{} Reward: {}".format(self.name, total_steps, episode_count, episode_reward))
                 print("Total Steps: {}\tTotal Episodes: {}\tMax Score: {}\tAvg Score: {}".format(
-                    np.sum(_steps), np.sum(_episodes), _max_score, _running_avg_score))
+                    np.sum(main._steps), np.sum(main._episodes), main._max_score, main._running_avg_score))
 
                 # Update the network using the episode buffer at the end of the episode
                 if len(episode_buffer) != 0:

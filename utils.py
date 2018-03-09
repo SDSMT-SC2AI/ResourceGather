@@ -3,6 +3,15 @@ import argparse, json, os, errno
 
 def parse_args():
     parser = argparse.ArgumentParser(description="StarCraft II agent A2C TensorFlow implementation")
+    parser.add_argument("--max_mineral_cost",
+                        default=300, type=int,
+                        help="Maximum mineral cost of a unit")
+    parser.add_argument("--max_gas_cost",
+                        default=50, type=int,
+                        help="Maximum gas cost of a unit")
+    parser.add_argument("--max_bases",
+                        default=5, type=int,
+                        help="Maximum number of bases allowed for the agent")
     parser.add_argument("--config",
                         default="config.json", type=str,
                         help="Configuration file")
