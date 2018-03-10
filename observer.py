@@ -19,7 +19,7 @@ def process_observation(env_obs, flags=None):
 
 
 def get_larva_by_base(env_obs, bases, flags=None):
-    """Returns a list of lists where base_larva[i] are base[i]'s larva"""
+    """Returns a list of how many larva are at each base"""
     base_larva = []
     for base in bases:
         base_larva_list = 0
@@ -29,6 +29,6 @@ def get_larva_by_base(env_obs, bases, flags=None):
         if (base_larva_list != 0):
             base_larva.append(base_larva_list)
     for i in range(flags.max_bases - len(base_larva)):
-        base_larva.append([])
+        base_larva.append(0)
     
     return base_larva
