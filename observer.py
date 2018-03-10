@@ -9,17 +9,13 @@ def process_observation(env_obs, flags=None):
     available_actions = np.array([actions.check_available(env_obs.observation['available_actions'])])
     minerals = np.array([min(env_obs.raw_obs.player_common.minerals, flags.max_mineral_cost) / flags.max_mineral_cost])
     food_available = np.array([env_obs.raw_obs.player_common.food_cap - env_obs.raw_obs.player_common.food_used])
-    bases = get_bases(env_obs, flags=None)
+    bases = GetUnits(86, env_obs)
     number_of_bases = np.array([len(bases) / flags.max_bases])
     larva_by_base = np.array(get_larva_by_base(env_obs, bases, flags))
     obs = np.concatenate([available_actions, minerals, food_available, number_of_bases, larva_by_base])
     episode_end = (env_obs.observation.step_type == environment.StepType.LAST)
     return reward, obs, episode_end
 
-
-def get_bases(env_obs, flags=None):
-    number_bases = env_obs.
-    return number_bases
 
 
 def get_larva_by_base(env_obs, bases, flags=None):
