@@ -197,3 +197,18 @@ class SubprocVecEnv(VecEnv):
     @property
     def num_envs(self):
         return len(self.remotes)
+
+
+
+def GetUnits(unit_type, obs):
+    """Gets all units of unit_type(s), unit_type MUST be a list"""
+    ret_val = []
+    if (isinstance(unit_type, int)):
+        for item in obs[0].observation.raw_data.units:
+            if (item.unit_type == unit_type):
+                ret_val.append(item)
+    else:
+        for item in obs[0].observation.raw_data.units:
+            if (item.unit_type in unit_type):
+                ret_val.append(item)
+    return ret_val
