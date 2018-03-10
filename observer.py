@@ -6,7 +6,7 @@ observation_size = 0
 
 def process_observation(env_obs, flags=None):
     reward = env_obs.observation.reward
-    available_actions = np.array([actions.check_available(env_obs.observation['available_actions'])])
+    available_actions = np.array([actions.check_available_actions(env_obs.observation['available_actions'])])
     minerals = np.array([min(env_obs.raw_obs.player_common.minerals, flags.max_mineral_cost) / flags.max_mineral_cost])
     food_available = np.array([env_obs.raw_obs.player_common.food_cap - env_obs.raw_obs.player_common.food_used])
     number_of_bases = np.array([get_number_of_bases(env_obs, flags) / flags.max_bases])
