@@ -8,7 +8,7 @@ hidden_layer_size = (3*observer.observation_size)//2
 network_spec = {
             "input size": observer.observation_size,
             "hidden layer size": hidden_layer_size,
-            "number of actions": len(actions.action_space)
+            "number of actions": actions.action_space_size
         }
 
 # Copies one set of variables to another.
