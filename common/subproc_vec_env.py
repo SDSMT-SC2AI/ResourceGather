@@ -6,6 +6,7 @@ from baselines.common.vec_env import VecEnv
 from pysc2.env import environment
 from pysc2.env import sc2_env
 
+
 def worker(remote, agent, map_name, flags, i):
     def step(d):
         parent = Namespace(d)
