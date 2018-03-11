@@ -18,20 +18,27 @@ def TestGetUnits():
     # Multi-type of friendly units
     player1 = hlp.GetUnits([48, 51],_obs, hlp.Alliance.Self)
 
-
+    print("GetUnit tests:")
+    print("-----------------------------------------------------")
     if (len(marines) != 3):
         print("\nFailed to get self-units\n")
         exit()
+    else:
+        print("Select Single type of friendly unit passed")
 
     if (len(lings) != 2):
         print("\nFailed to get enemy-units\n")
         exit()
+    else:
+        print("Select Single type of enemy unit passed")
 
     if (len(player1) != 5):
         print("\nFailed to get multiple-units\n")
-        exit()   
+        exit()
+    else:
+        print("Select Multi-type of friendly units passed")
 
-    print("GetUnits() passed all tests")
+    print("GetUnits passed all tests\n")
 
 def main():
     TestGetUnits()
