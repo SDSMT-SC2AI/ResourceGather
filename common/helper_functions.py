@@ -1,5 +1,5 @@
 from enum import Enum
-
+from math import sqrt
 
 class Alliance(Enum):
     """Enumerator for alliance"""
@@ -31,8 +31,8 @@ def DistSquared(a, b):
 
 def InDistSqRange(a, b, range):
     """Checks to see if a is in range of b"""
-    return DistSquared(a, b) < range
+    return DistSquared(a, b) <= range
 
 def InRadius(a, b, radius):
     """Checks to see if a is in range of b"""
-    return sqrt(DistSquared(a, b)) < radius
+    return sqrt(DistSquared(a, b)) <= radius
