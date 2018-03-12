@@ -60,7 +60,8 @@ class Worker:
                              discounted_rewards,
                              values,
                              advantages)
-
+        self.agent.update_policy(sess)
+        
         return value_loss / len(rollout), policy_loss / len(rollout), entropy / len(rollout), \
             grad_norms, var_norms
 
