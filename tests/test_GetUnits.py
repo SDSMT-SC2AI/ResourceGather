@@ -1,9 +1,9 @@
-from enum import Enum
 import sys
-sys.path.insert(0, '../common')
-import helper_functions as hlp
+import context
+import common.helper_functions as hlp
 from pysc2.env import sc2_env
 from absl.flags import FLAGS
+
 
 def TestGetUnits():
     environ = sc2_env.SC2Env(map_name="test_GetUnits", agent_race="Z")
@@ -20,19 +20,19 @@ def TestGetUnits():
 
     print("GetUnit tests:")
     print("-----------------------------------------------------")
-    if (len(marines) != 3):
+    if len(marines) != 3:
         print("\nFailed to get self-units\n")
         exit()
     else:
         print("Select Single type of friendly unit passed")
 
-    if (len(lings) != 2):
+    if len(lings) != 2:
         print("\nFailed to get enemy-units\n")
         exit()
     else:
         print("Select Single type of enemy unit passed")
 
-    if (len(player1) != 5):
+    if len(player1) != 5:
         print("\nFailed to get multiple-units\n")
         exit()
     else:
@@ -40,8 +40,10 @@ def TestGetUnits():
 
     print("GetUnits passed all tests\n")
 
+
 def main():
     TestGetUnits()
+
 
 if __name__ == '__main__':
     FLAGS(sys.argv)
