@@ -34,8 +34,8 @@ class Worker:
     def train(self, rollout, sess, gamma, bootstrap_value):
         rollout = np.array(rollout)
         actions = rollout[:, 0]
-        action_dists = rollout[:, 1]
-        rewards = rollout[:, 2]
+        rewards = rollout[:, 1]
+        observations = rollout[:, 2]
         values = rollout[:, 3]
 
         discounted_rewards = discount(rewards, gamma)
@@ -45,9 +45,8 @@ class Worker:
         value_loss, policy_loss, entropy, grad_norms, var_norms, _ = \
             self.agent.train(sess,
                              actions,
-                             action_dists,
+                             observations,
                              discounted_rewards,
-                             values,
                              advantages)
         self.agent.update_policy(sess)
         
@@ -77,7 +76,7 @@ class Worker:
                     env_obs = self.env.step(actions=actions)
                     reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
-                    episode_buffer.append([choice, action_dist, reward, value[0, 0]])
+                    episode_buffer.append([choice, reward, obs, value])
                     episode_values.append(value[0, 0])
 
                     episode_reward += reward

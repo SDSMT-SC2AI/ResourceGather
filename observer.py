@@ -1,5 +1,6 @@
 import actions
 import numpy as np
+from common.helper_functions import GetUnits, InDistSqRange
 from pysc2.env import environment
 observation_size = 0
 
