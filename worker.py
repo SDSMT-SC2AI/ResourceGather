@@ -1,9 +1,6 @@
 import tensorflow as tf
 import numpy as np
 import scipy.signal
-import observer
-import main
-from pysc2.env import sc2_env
 mse = tf.losses.mean_squared_error
 
 
@@ -13,7 +10,7 @@ def discount(x, gamma):
 
 
 class Worker:
-    def __init__(self, name, agent_cls, optimizer, model_path, buffer_size, global_episodes, map_name, flags):
+    def __init__(self, name, main, env, agent_cls, optimizer, model_path, global_episodes, flags=None, buffer_size=30):
         self.name = "worker_" + str(name)
         self.number = name
         self.model_path = model_path
@@ -26,21 +23,13 @@ class Worker:
         self.episode_mean_values = []
         self.summary_writer = tf.summary.FileWriter("train_" + str(self.number))
         self.flags = flags
+        self.main = main
 
         # Create the local copy of the agent which inherits the global network parameters
         self.agent = agent_cls(self.name, 'global', optimizer)
 
         print('Initializing environment #{}...'.format(self.number))
-        self.env = sc2_env.SC2Env(
-            map_name=map_name,
-            agent_race=flags.agent_race,
-            bot_race=flags.bot_race,
-            difficulty=flags.difficulty,
-            step_mul=flags.step_mul,
-            game_steps_per_episode=flags.game_steps_per_episode,
-            screen_size_px=(flags.screen_resolution, flags.screen_resolution),
-            minimap_size_px=(flags.minimap_resolution, flags.minimap_resolution),
-            visualize=False)
+        self.env = env
 
     def train(self, rollout, sess, gamma, bootstrap_value):
         rollout = np.array(rollout)
@@ -80,13 +69,13 @@ class Worker:
                 episode_step_count = 0
 
                 # Start new episode
-                env_obs = self.env.reset()[0]
-                reward, obs, episode_end = observer.process_observation(env_obs, self.flags)
+                env_obs = self.env.reset()
+                reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
                 while not episode_end:
                     actions, choice, action_dist, value = self.agent.step(sess, obs)
                     env_obs = self.env.step(actions=actions)
-                    reward, obs, episode_end = observer.process_observation(env_obs, self.flags)
+                    reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
                     episode_buffer.append([choice, action_dist, reward, value[0, 0]])
                     episode_values.append(value[0, 0])
@@ -108,16 +97,16 @@ class Worker:
                 self.episode_mean_values.append(np.mean(episode_values))
                 episode_count += 1
 
-                if main._max_score < episode_reward:
-                    main._max_score = episode_reward
-                main._running_avg_score = (2.0 / 101) * (episode_reward - main._running_avg_score) + main._running_avg_score
-                main._episodes[self.number] = episode_count
-                main._steps[self.number] = total_steps
+                if self.main._max_score < episode_reward:
+                    self.main._max_score = episode_reward
+                self.main._running_avg_score = (2.0 / 101) * (episode_reward - self.main._running_avg_score) + self.main._running_avg_score
+                self.main._episodes[self.number] = episode_count
+                self.main._steps[self.number] = total_steps
 
                 print(
                     "{} Step #{} Episode #{} Reward: {}".format(self.name, total_steps, episode_count, episode_reward))
                 print("Total Steps: {}\tTotal Episodes: {}\tMax Score: {}\tAvg Score: {}".format(
-                    np.sum(main._steps), np.sum(main._episodes), main._max_score, main._running_avg_score))
+                    np.sum(self.main._steps), np.sum(self.main._episodes), self.main._max_score, self.main._running_avg_score))
 
                 # Update the network using the episode buffer at the end of the episode
                 if len(episode_buffer) != 0:

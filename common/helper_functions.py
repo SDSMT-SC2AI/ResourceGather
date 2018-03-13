@@ -1,5 +1,7 @@
 from enum import Enum
 from math import sqrt
+import tensorflow as tf
+
 
 class Alliance(Enum):
     """Enumerator for alliance"""
@@ -7,7 +9,6 @@ class Alliance(Enum):
     Ally = 2
     Neutral = 3
     Enemy = 4
-
 
 
 def GetUnits(unit_type, obs, alliance=Alliance.Self):
@@ -33,6 +34,18 @@ def InDistSqRange(a, b, range):
     """Checks to see if a is in range of b"""
     return DistSquared(a, b) <= range
 
+
 def InRadius(a, b, radius):
     """Checks to see if a is in range of b"""
     return sqrt(DistSquared(a, b)) <= radius
+
+
+# Copies one set of variables to another.
+# Used to set worker network parameters to those of global network.
+def update_target_graph(from_scope, to_scope):
+    from_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, from_scope)
+    to_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, to_scope)
+    op_holder = []
+    for from_var, to_var in zip(from_vars, to_vars):
+        op_holder.append(to_var.assign(from_var))
+    return op_holder
