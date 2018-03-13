@@ -25,7 +25,7 @@ class Simple(BaseAgent):
         super().__init__(name, parent, optimizer, network, Actions(), network_spec)
 
     @staticmethod
-    def process_observation(obs):
+    def process_observation(obs, flags=None):
         reward = obs[0][0]
         n_steps = obs[0][1]
         ends = obs[0][2]

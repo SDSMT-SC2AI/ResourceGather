@@ -52,7 +52,7 @@ class Policy:
             )
             policy_shifted = policy_raw - tf.reduce_max(policy_raw, 1, keep_dims=True)
             self.policy_fn = policy_shifted - tf.log(tf.reduce_sum(tf.exp(policy_shifted)))
-            self.exploration_rate = tf.placeholder(shape=None, dtype=tf.float32)
+            self.exploration_rate = tf.placeholder(shape=(), dtype=tf.float32)
             self.action = tf.squeeze(tf.multinomial(self.policy_fn / (self.exploration_rate + 1e-3), 1))
 
     def step(self, sess, observation, exploration_rate=1):
