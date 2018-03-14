@@ -51,7 +51,7 @@ def __main__():
         env = SimpleEnv()
         workers.append(
             Worker(i, sys.modules[__name__], env, agent.Simple,
-                   optimizer, model_path, global_episodes, buffer_size=30))
+                   optimizer, model_path, global_episodes, buffer_size=6))
     saver = tf.train.Saver(max_to_keep=5)
 
     with tf.Session(config=config) as sess:
