@@ -1,11 +1,10 @@
 import context
 import sys
-sys.path.insert(0, '../common')
 from absl.flags import FLAGS
 
-import test_Policy as t_policy
-import test_GetUnits as t_units
-import test_Distances as t_dist
+import tests.test_Policy as t_policy
+import tests.test_GetUnits as t_units
+import tests.test_Distances as t_dist
 
 def main():
     print()

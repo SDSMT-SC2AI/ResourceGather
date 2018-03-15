@@ -3,7 +3,7 @@ mse = tf.losses.mean_squared_error
 
 
 class Trainer:
-    def __init__(self, scope, optimizer, policy, value_c=0.1, policy_c=1, entropy_c=0.01, max_grad_norm=40.0):
+    def __init__(self, scope, optimizer, policy, value_c=0.1, policy_c=1, entropy_c=1, max_grad_norm=40.0):
         self.actions = tf.placeholder(shape=[None], dtype=tf.int32, name="actions")
         self.target_v = tf.placeholder(shape=[None], dtype=tf.float32, name="target_v")
         self.advantages = tf.placeholder(shape=[None], dtype=tf.float32, name="advantages")
