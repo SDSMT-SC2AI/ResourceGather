@@ -32,8 +32,8 @@ def __main__():
     global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
     optimizer = tf.train.RMSPropOptimizer(learning_rate=0.001)
     master_network = network.Policy('global', agent.network_spec)
-    # num_workers = psutil.cpu_count()
-    num_workers = 1
+    num_workers = psutil.cpu_count()
+    # num_workers = 1
 
     config = tf.ConfigProto(
         allow_soft_placement=True,
@@ -52,7 +52,7 @@ def __main__():
         env = SimpleEnv()
         workers.append(
             Worker(i, sys.modules[__name__], env, agent.Simple,
-                   optimizer, model_path, global_episodes, buffer_size=6))
+                   optimizer, model_path, global_episodes, buffer_size=10))
     saver = tf.train.Saver(max_to_keep=5)
 
     with tf.Session(config=config) as sess:

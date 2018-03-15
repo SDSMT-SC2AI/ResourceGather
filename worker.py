@@ -37,10 +37,10 @@ class Worker:
         actions = np.array(rollout[0])
         rewards = np.array(rollout[1])
         observations = np.concatenate(rollout[2])
-        values = np.concatenate(rollout[3])
+        values = np.array(rollout[3])
 
         discounted_rewards = discount(rewards, gamma)
-        values_plus = np.concatenate([values, np.array([[bootstrap_value]])])
+        values_plus = np.concatenate([values, np.array([bootstrap_value])])
         advantages = discount(rewards + gamma * values_plus[1:] - values_plus[:-1], gamma)
 
         value_loss, policy_loss, entropy, grad_norms, var_norms, _ = \
@@ -73,16 +73,16 @@ class Worker:
                 reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
                 while not episode_end:
-                    actions, choice, action_dist, value = self.agent.step(sess, obs)
+                    (feedback, actions), choice, action_dist, value = self.agent.step(sess, obs)
                     env_obs = self.env.step(actions=actions)
                     reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
-                    for i, v in enumerate([choice, reward, obs, value]):
+                    for i, v in enumerate([choice, reward + feedback, obs, value]):
                         episode_buffer[i].append(v)
 
-                    episode_values.append(value[0, 0])
+                    episode_values.append(value)
 
-                    episode_reward += reward
+                    episode_reward += reward + feedback
                     total_steps += 1
                     episode_step_count += 1
 
@@ -93,6 +93,7 @@ class Worker:
                         bootstrap = self.agent.value(sess, obs)
                         value_loss, policy_loss, entropy, gradient_norms, var_norms = \
                             self.train(episode_buffer, sess, gamma, bootstrap)
+                        episode_buffer = [[] for _ in range(4)]
 
                 self.episode_rewards.append(episode_reward)
                 self.episode_lengths.append(episode_step_count)
@@ -105,18 +106,24 @@ class Worker:
                 self.main._episodes[self.number] = episode_count
                 self.main._steps[self.number] = total_steps
 
-                print(
-                    "{} Step #{} Episode #{} Reward: {}".format(self.name, total_steps, episode_count, episode_reward))
-                print("Total Steps: {}\tTotal Episodes: {}\tMax Score: {}\tAvg Score: {}".format(
-                    np.sum(self.main._steps), np.sum(self.main._episodes), self.main._max_score, self.main._running_avg_score))
+                #print(
+                 #   "{} Step #{} Episode #{} Reward: {}".format(self.name, total_steps, episode_count, episode_reward))
+                #print("Total Steps: {}\tTotal Episodes: {}\tMax Score: {}\tAvg Score: {}".format(
+                  #  np.sum(self.main._steps), np.sum(self.main._episodes), self.main._max_score, self.main._running_avg_score))
+
+                print("{:6.0f} Episodes: value loss = {:10.1f}, policy loss = {:7.1f}, "
+                      "entropy = {:7.3f}, reward = {:4d}".format(
+                        np.sum(self.main._episodes), value_loss, policy_loss, entropy, episode_reward))
 
                 # Update the network using the episode buffer at the end of the episode
                 if len(episode_buffer) != 0:
                     value_loss, policy_loss, entropy, gradient_norms, var_norms = \
                         self.train(episode_buffer, sess, gamma, 0.0)
 
-                if episode_count % 5 == 0 and episode_count != 0:
-                    if episode_count % 250 == 0 and self.name == 'worker_0':
+                if episode_count % 50 == 0 and episode_count != 0:
+                    #if input("stop? ") == "yes":
+                     #   return
+                    if episode_count % 10000 == 0 and self.name == 'worker_0':
                         saver.save(sess, self.model_path + '/model-' + str(episode_count) + '.cptk')
                         print("Saved Model")
 

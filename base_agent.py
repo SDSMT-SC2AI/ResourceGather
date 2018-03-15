@@ -1,6 +1,5 @@
 from common.helper_functions import update_target_graph
-import tensorflow as tf
-
+from common.debugging import dump_args
 
 class BaseAgent:
     def __init__(self, name, parent, optimizer, network, action_space, network_spec):
@@ -10,6 +9,7 @@ class BaseAgent:
         self.update_local_policy = update_target_graph(parent, name)
         self.action_space = action_space
 
+    # @dump_args
     def train(self, sess, actions, observations, discounted_rewards, advantages):
         return sess.run([self.trainer.value_loss,
                          self.trainer.policy_loss,

@@ -24,7 +24,7 @@ def test_policy():
             policy.exploration_rate: 1,
         })
 
-    with shelve.open('tests/data/network_tests') as db:
+    with shelve.open(os.path.join(os.path.dirname(__file__), 'data/network_tests')) as db:
         if 'policy' not in db:
             print(results)
             db['policy'] = results
