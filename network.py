@@ -34,7 +34,7 @@ class Policy:
     def __init__(self, scope, network_spec):
         self.network_spec = network_spec
         with tf.variable_scope(scope):
-            self.input = tf.placeholder(shape=[None, network_spec["input size"]], dtype=tf.float32)
+            self.input = tf.placeholder(shape=[None, network_spec["input size"]], dtype=tf.float32, name="input")
             hidden1 = tf.contrib.layers.fully_connected(
                 inputs=self.input,
                 num_outputs=network_spec["hidden layer size"],
@@ -52,12 +52,13 @@ class Policy:
             )
             policy_shifted = policy_raw - tf.reduce_max(policy_raw, 1, keep_dims=True)
             self.policy_fn = policy_shifted - tf.log(tf.reduce_sum(tf.exp(policy_shifted)))
-            self.exploration_rate = tf.placeholder(shape=(), dtype=tf.float32)
+            self.exploration_rate = tf.placeholder(shape=(), dtype=tf.float32, name="explore_rate")
             self.action = tf.squeeze(tf.multinomial(self.policy_fn / (self.exploration_rate + 1e-3), 1))
 
     def step(self, sess, observation, exploration_rate=1):
                 # returns tuple(action, value, policy):
                 #   a random action according to policy, the value function result, and current policy
+                print(observation)
                 return sess.run([self.action, self.policy_fn, self.value_fn], feed_dict={
                     self.input: observation,
                     self.exploration_rate: exploration_rate})

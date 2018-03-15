@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import scipy.signal
+import common.debugging as debug
 mse = tf.losses.mean_squared_error
 
 
@@ -31,15 +32,15 @@ class Worker:
         print('Initializing environment #{}...'.format(self.number))
         self.env = env
 
+    #@debug.dump_args
     def train(self, rollout, sess, gamma, bootstrap_value):
-        rollout = np.array(rollout)
-        actions = rollout[:, 0]
-        rewards = rollout[:, 1]
-        observations = rollout[:, 2]
-        values = rollout[:, 3]
+        actions = np.array(rollout[0])
+        rewards = np.array(rollout[1])
+        observations = np.concatenate(rollout[2])
+        values = np.concatenate(rollout[3])
 
         discounted_rewards = discount(rewards, gamma)
-        values_plus = np.concatenate([values, np.array([bootstrap_value])])
+        values_plus = np.concatenate([values, np.array([[bootstrap_value]])])
         advantages = discount(rewards + gamma * values_plus[1:] - values_plus[:-1], gamma)
 
         value_loss, policy_loss, entropy, grad_norms, var_norms, _ = \
@@ -62,7 +63,7 @@ class Worker:
             while not coord.should_stop():
                 self.agent.update_policy(sess)
 
-                episode_buffer = []
+                episode_buffer = [[] for _ in range(4)]
                 episode_values = []
                 episode_reward = 0
                 episode_step_count = 0
@@ -76,7 +77,9 @@ class Worker:
                     env_obs = self.env.step(actions=actions)
                     reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
-                    episode_buffer.append([choice, reward, obs, value])
+                    for i, v in enumerate([choice, reward, obs, value]):
+                        episode_buffer[i].append(v)
+
                     episode_values.append(value[0, 0])
 
                     episode_reward += reward

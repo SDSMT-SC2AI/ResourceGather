@@ -29,7 +29,7 @@ class Simple(BaseAgent):
         reward = obs[0][0]
         n_steps = obs[0][1]
         ends = obs[0][2]
-        np.array([[n_steps // 3, n_steps % 3]])
-        return reward, n_steps, ends
+        net_in = np.array([[n_steps // 3, n_steps % 3]])
+        return reward, net_in, ends
 
 
