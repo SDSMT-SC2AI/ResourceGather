@@ -3,20 +3,20 @@ mse = tf.losses.mean_squared_error
 
 
 class Trainer:
-    def __init__(self, scope, optimizer, policy, value_c=0.1, policy_c=1, entropy_c=1, max_grad_norm=40.0):
+    def __init__(self, scope, optimizer, policy, value_c=0.5, policy_c=1, entropy_c=0.01, max_grad_norm=40.0):
         self.actions = tf.placeholder(shape=[None], dtype=tf.int32, name="actions")
         self.target_v = tf.placeholder(shape=[None], dtype=tf.float32, name="target_v")
         self.advantages = tf.placeholder(shape=[None], dtype=tf.float32, name="advantages")
 
         # Loss functions
-        self.value_loss = tf.reduce_mean(tf.square(self.target_v - tf.squeeze(policy.value_fn)))
+        self.value_loss = tf.reduce_sum(tf.square(self.target_v - tf.squeeze(policy.value_fn)))
         negative_log_prob_actions = tf.nn.sparse_softmax_cross_entropy_with_logits(
             logits=policy.policy_fn,
             labels=self.actions)
-        self.policy_loss = tf.reduce_mean(self.advantages * negative_log_prob_actions)
+        self.policy_loss = tf.reduce_sum(self.advantages * tf.exp(-negative_log_prob_actions))
         self.entropy = tf.reduce_sum(tf.exp(policy.policy_fn) * policy.policy_fn)
 
-        self.loss = value_c * self.value_loss + policy_c * self.policy_loss - entropy_c * self.entropy
+        self.loss = value_c * self.value_loss - policy_c * self.policy_loss - entropy_c * self.entropy
 
         # Get gradients from local network using local losses
         local_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)

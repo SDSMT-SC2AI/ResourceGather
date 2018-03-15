@@ -43,7 +43,9 @@ class Worker:
         values_plus = np.concatenate([values, np.array([bootstrap_value])])
         advantages = discount(rewards + gamma * values_plus[1:] - values_plus[:-1], gamma)
 
-        value_loss, policy_loss, entropy, grad_norms, var_norms, _ = \
+        #print(advantages)
+
+        loss, value_loss, policy_loss, entropy, grad_norms, var_norms, _ = \
             self.agent.train(sess,
                              actions,
                              observations,
@@ -51,11 +53,11 @@ class Worker:
                              advantages)
         self.agent.update_policy(sess)
         
-        return value_loss / len(rollout), policy_loss / len(rollout), entropy / len(rollout), \
+        return loss / len(rollout), value_loss / len(rollout), policy_loss / len(rollout), entropy / len(rollout), \
             grad_norms, var_norms
 
     def work(self, max_episode_length, gamma, sess, coord, saver):
-        value_loss = policy_loss = entropy = gradient_norms = var_norms = 0
+        loss = value_loss = policy_loss = entropy = gradient_norms = var_norms = 0
         episode_count = sess.run(self.global_episodes)
         total_steps = 0
         print("Starting worker " + str(self.number))
@@ -89,9 +91,10 @@ class Worker:
                     if episode_end:
                         break
 
-                    if len(episode_buffer) == self.buffer_size and episode_step_count != max_episode_length - 1:
+
+                    if len(episode_buffer[0]) == self.buffer_size and episode_step_count != max_episode_length - 1:
                         bootstrap = self.agent.value(sess, obs)
-                        value_loss, policy_loss, entropy, gradient_norms, var_norms = \
+                        loss, value_loss, policy_loss, entropy, gradient_norms, var_norms = \
                             self.train(episode_buffer, sess, gamma, bootstrap)
                         episode_buffer = [[] for _ in range(4)]
 
@@ -111,13 +114,13 @@ class Worker:
                 #print("Total Steps: {}\tTotal Episodes: {}\tMax Score: {}\tAvg Score: {}".format(
                   #  np.sum(self.main._steps), np.sum(self.main._episodes), self.main._max_score, self.main._running_avg_score))
 
-                print("{:6.0f} Episodes: value loss = {:10.1f}, policy loss = {:7.1f}, "
+                print("{:6.0f} Episodes: loss = {:10.4f}, value loss = {:10.4f}, policy loss = {:10.4f}, "
                       "entropy = {:7.3f}, reward = {:4d}".format(
-                        np.sum(self.main._episodes), value_loss, policy_loss, entropy, episode_reward))
+                        np.sum(self.main._episodes), loss, value_loss, policy_loss, entropy, episode_reward))
 
                 # Update the network using the episode buffer at the end of the episode
                 if len(episode_buffer) != 0:
-                    value_loss, policy_loss, entropy, gradient_norms, var_norms = \
+                    loss, value_loss, policy_loss, entropy, gradient_norms, var_norms = \
                         self.train(episode_buffer, sess, gamma, 0.0)
 
                 if episode_count % 50 == 0 and episode_count != 0:

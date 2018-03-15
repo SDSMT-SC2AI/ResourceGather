@@ -11,7 +11,8 @@ class BaseAgent:
 
     # @dump_args
     def train(self, sess, actions, observations, discounted_rewards, advantages):
-        return sess.run([self.trainer.value_loss,
+        return sess.run([self.trainer.loss,
+                         self.trainer.value_loss,
                          self.trainer.policy_loss,
                          self.trainer.entropy,
                          self.trainer.grad_norms,
@@ -28,7 +29,7 @@ class BaseAgent:
         return self.action_space.act(choice), choice, action_dist, value
 
     def value(self, sess, obs):
-        self.policy.value(sess, obs)
+        return self.policy.value(sess, obs)
 
     def update_policy(self, sess):
         sess.run(self.update_local_policy)

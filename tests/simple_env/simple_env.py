@@ -8,4 +8,5 @@ class SimpleEnv:
 
     def step(self, actions):
         self.episode_step += 1
-        return [[len(actions), self.episode_step, self.episode_step > 100], ]
+        reward = actions[0]**2
+        return [[reward, self.episode_step, self.episode_step > 100], ]

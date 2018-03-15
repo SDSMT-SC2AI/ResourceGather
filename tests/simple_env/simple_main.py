@@ -1,10 +1,11 @@
 import psutil
 import os
+from os.path import abspath, join, dirname
 import sys
 import threading
 import numpy as np
 import tensorflow as tf
-
+sys.path.insert(0, abspath(join(dirname(__file__), "../..")))
 from time import sleep
 import network
 from worker import Worker
@@ -20,7 +21,7 @@ _steps = _episodes = []
 
 def __main__():
     max_episode_length = 300
-    gamma = 0.99
+    gamma = 0.1
     load_model = False
     model_path = "./test_model"
 
