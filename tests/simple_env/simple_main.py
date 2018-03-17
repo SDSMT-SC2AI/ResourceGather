@@ -21,7 +21,7 @@ _steps = _episodes = []
 
 def __main__():
     max_episode_length = 300
-    gamma = 0.1
+    gamma = 0.999
     load_model = False
     model_path = "./test_model"
 
@@ -31,7 +31,7 @@ def __main__():
         os.makedirs(model_path)
 
     global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
-    optimizer = tf.train.RMSPropOptimizer(learning_rate=0.001)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
     master_network = network.Policy('global', agent.network_spec)
     num_workers = psutil.cpu_count()
     # num_workers = 1
