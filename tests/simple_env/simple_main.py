@@ -31,7 +31,7 @@ def __main__():
         os.makedirs(model_path)
 
     global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
-    optimizer = tf.train.RMSPropOptimizer(learning_rate=0.001)
+    optimizer = tf.train.RMSPropOptimizer(learning_rate=0.005, decay=.96,epsilon=0.1)
     master_network = network.Policy('global', agent.network_spec)
     num_workers = psutil.cpu_count()
     # num_workers = 1

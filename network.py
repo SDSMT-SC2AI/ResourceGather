@@ -9,12 +9,16 @@ class Trainer:
         self.advantages = tf.placeholder(shape=[None], dtype=tf.float32, name="advantages")
 
         # Loss functions
-        self.value_loss = tf.reduce_sum(tf.square(self.target_v - tf.squeeze(policy.value_fn)))
+        self.value_loss = value_c * tf.reduce_sum(tf.square(self.target_v - tf.squeeze(policy.value_fn)))
         negative_log_prob_actions = tf.nn.sparse_softmax_cross_entropy_with_logits(
             logits=policy.policy_fn,
             labels=self.actions)
         self.policy_loss = tf.reduce_sum(self.advantages * tf.exp(-negative_log_prob_actions))
+        print("POLICY.POLICY_FN: ",policy.policy_fn)
         self.entropy = tf.reduce_sum(tf.exp(policy.policy_fn) * policy.policy_fn)
+        # print("SELF.ENTROPY: ", self.entropy)
+        # print("POLICY.POLICY_FN: ", policy.policy_fn)
+        # self.entropy = tf.reduce_sum(policy.policy_fn * tf.log(policy.policy_fn)) - 1e-3
 
         self.loss = value_c * self.value_loss - policy_c * self.policy_loss - entropy_c * self.entropy
 
@@ -53,11 +57,14 @@ class Policy:
             policy_shifted = policy_raw - tf.reduce_max(policy_raw, 1, keep_dims=True)
             self.policy_fn = policy_shifted - tf.log(tf.reduce_sum(tf.exp(policy_shifted)))
             self.exploration_rate = tf.placeholder(shape=(), dtype=tf.float32, name="explore_rate")
-            self.action = tf.squeeze(tf.multinomial(self.policy_fn / (self.exploration_rate + 1e-3), 1))
+            noise = tf.random_normal(shape=tf.shape(self.policy_fn), mean=0.0, stddev=1.0, dtype=tf.float32)
+            self.policy_fn = tf.add(self.policy_fn, noise)
+            self.action = tf.squeeze(tf.multinomial(self.policy_fn * (self.exploration_rate + 1e-3), 1))
 
     def step(self, sess, observation, exploration_rate=1):
                 # returns tuple(action, value, policy):
                 #   a random action according to policy, the value function result, and current policy
+                # print("SELF.ACTION: ", self.action)
                 return sess.run([self.action, self.policy_fn, self.value_fn], feed_dict={
                     self.input: observation,
                     self.exploration_rate: exploration_rate})

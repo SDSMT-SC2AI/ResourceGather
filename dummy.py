@@ -12,24 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """A random agent for starcraft."""
-import numpy
+# import numpy
 
-from pysc2.agents import base_agent
-from pysc2.lib import actions
+# from pysc2.agents import base_agent
+# from pysc2.lib import actions
 
 
-class Dummy(base_agent.BaseAgent):
-    """A random agent for starcraft."""
-    map_name = "AbyssalReefLE_RL"
+# class Dummy(base_agent.BaseAgent):
+#     """A random agent for starcraft."""
+#     map_name = "AbyssalReefLE_RL"
     
-    def __init__(self):
-        super(Dummy, self).__init__()
-        self.step_num = 0
+#     def __init__(self):
+#         super(Dummy, self).__init__()
+#         self.step_num = 0
 
 
-    def step(self, obs):
-        super(Dummy, self).step(obs)
+#     def step(self, obs):
+#         super(Dummy, self).step(obs)
 
-        print(self.step_num)
-        self.step_num += 1
-        return actions.FunctionCall(actions.FUNCTIONS.no_op.id, [])
+#         print(self.step_num)
+#         self.step_num += 1
+#         return actions.FunctionCall(actions.FUNCTIONS.no_op.id, [])

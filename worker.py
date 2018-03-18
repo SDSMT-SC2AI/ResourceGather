@@ -76,6 +76,7 @@ class Worker:
 
                 while not episode_end:
                     (feedback, actions), choice, action_dist, value = self.agent.step(sess, obs)
+                    # print("ACTION_DIST: ", action_dist)
                     env_obs = self.env.step(actions=actions)
                     reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
@@ -94,6 +95,7 @@ class Worker:
 
                     if len(episode_buffer[0]) == self.buffer_size and episode_step_count != max_episode_length - 1:
                         bootstrap = self.agent.value(sess, obs)
+                        # print(episode_buffer[0])
                         loss, value_loss, policy_loss, entropy, gradient_norms, var_norms = \
                             self.train(episode_buffer, sess, gamma, bootstrap)
                         episode_buffer = [[] for _ in range(4)]
