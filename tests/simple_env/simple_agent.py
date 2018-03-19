@@ -26,6 +26,12 @@ class Simple(BaseAgent):
 
     def step(self, sess, observation):
         choice, action_dist, value = self.policy.step(sess, observation, 1)
+        # print("ACTION_DIST: ", action_dist)
+        # max_val = float("-inf")
+        # for i in range(len(action_dist[0])):
+        #     if (action_dist[0][i] > max_val):
+        #         max_val = action_dist[0][i]
+        #         choice = i
         return self.action_space.act(choice), choice, action_dist, value
 
     @staticmethod
