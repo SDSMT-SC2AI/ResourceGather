@@ -7,6 +7,7 @@ import sys
 from collections import deque
 from absl import flags
 from absl.flags import FLAGS
+#from sklearn.cluster import KMeans
 
 from pysc2.env import sc2_env
 from pysc2.agents import base_agent
@@ -43,18 +44,24 @@ _UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
 _NOT_QUEUED = [0]
 _QUEUED = [1]
 _PLAYER_SELF = 1
+_PLAYER_MINERALS = 1
+_SUPPLY_USED = 3
+_SUPPLY_CAP = 4
+_LARVA_AVALABLE = 10
 
-#TODO even though the screen coords are what the game give you they dont work for building!? just need to fiddle more with the values
 #expansion map coordinites for moving the camera and the screen coords for the hatch
-#Top left points
+#Bottom Right points
 _BOTTOM_START = [52,50]
-_BOTTOM_SECOND = [42,48]
-_BOTTOM_SECOND_SCREEN = [34, 30]
+_BOTTOM_SECOND = [41,48]
+_BOTTOM_SECOND_SCREEN = [40, 33]
 _BOTTOM_THIRD = [51, 41]
-_BOTTOM_THIRD_SCREEN = [27, 29]
+_BOTTOM_THIRD_SCREEN = [30, 27]
 _BOTTOM_FOURTH = [42, 41]
 _BOTTOM_FOURTH_SCREEN = [30, 30]
-#Bottom right points
+
+
+"""
+Top Left points
 _TOP_START = [12, 13]
 _TOP_SECOND = [22,18]
 _TOP_SECOND_SCREEN = [44, 42]
@@ -62,7 +69,9 @@ _TOP_THIRD = [13,26]
 _TOP_THIRD_SCREEN = [40, 43]
 _TOP_FOURTH = [22,26]
 _TOP_FOURTH_SCREEN = [37, 42]
+"""
 
+#TODO integrate drone ID tags
 class Action_Space:
     # define the units and their actions
     valid_units = {126: ("Move_screen", "Effect_InjectLarva_screen"), #queen
@@ -72,14 +81,14 @@ class Action_Space:
     pool_flag = False
     top_left = True
 
-    #Setup the action and point ques
+
     def __init__(self):
         self.busy_units = {}
         self.actionq = deque([])
         self.pointq = deque([])
+        self.expo_count = 0
         return
 
-    #A quick check for which side of the map youre on
     def Start_pos(self, obs):
         start_y, start_x = (obs.observation["minimap"][_PLAYER_RELATIVE]).nonzero()
         if start_y.mean() <= 31:
@@ -87,14 +96,105 @@ class Action_Space:
         else:
             self.top_left = False
 
-    #This function gets the next action out of the que and returns it
+
+    # takes in the available actions from the observation (should be a list of action_ids) and returns a list of 0's and 1's with respect to our action space.
+    # 0 if the i_th action is not available, 1 if it is available. 
+    def check_available_actions(self, obs):
+        #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas
+        player_info = obs.observation["player"]
+        units = obs.observation["screen"][_UNIT_TYPE]
+        actions = []
+        #larva onscreen minus the queed larva
+        larva_Available = player_info[_LARVA_AVALABLE] - self.actionq.count["Train_Drone_quick"] - self.actionq.count["Train_Overlord_quick"]
+
+        #checks for if units are avalable on screen
+        queen_Flag = False
+        queen_y, queen_x = (_UNIT_TYPE == _QUEEN).nonzero()
+        if(queen_y.any()):
+            queen_Flag = True
+
+        drone_Flag = False
+        drone_y, drone_x = (_UNIT_TYPE == _DRONE).nonzero()
+        if(drone_y.any()):
+            drone_Flag = True
+
+        hatch_Flag = False
+        hatch_y, hatch_x = (_UNIT_TYPE == _HATCHERY).nonzero()
+        if(hatch_y.any()):
+            hatch_Flag = True
+         
+        supply_Available = player_info[_SUPPLY_CAP] - player_info[_SUPPLY_USED]
+
+        #hatch check
+        if(player_info[_PLAYER_MINERALS]>=300 and drone_Flag and self.expo_count < 3):
+            actions.append(1)
+        else:
+            actions.append(0)
+
+        #geyser check
+        if(player_info[_PLAYER_MINERALS]>=25 and drone_Flag):
+            actions.append(1)
+        else:
+            actions.append(0)
+
+        #drone conditions
+        if(player_info[_PLAYER_MINERALS]>=50 and larva_Available > 0):
+            actions.append(1)
+        else:
+            actions.append(0)
+
+        #overlord conditions
+        if(player_info[_PLAYER_MINERALS]>=100 and larva_Available > 0):
+            actions.append(1)
+        else:
+            actions.append(0)
+
+        #queen conditions
+        if(player_info[_PLAYER_MINERALS]>=200 and hatch_Flag):
+            actions.append(1)
+        else:
+            actions.append(0)
+
+        #inject check
+        if(queen_Flag):
+            actions.append(1)
+        else:
+            actions.append(0)
+
+        #Move screens should always be true
+        actions.append(1)
+        actions.append(1)
+        actions.append(1)
+        actions.append(1)
+
+        #min check
+        if(drone_Flag):
+            actions.append(1)
+        else:
+            actions.append(0)
+
+        #gas check
+        if(drone_Flag):
+            actions.append(1)
+        else:
+            actions.append(0)
+
+        return actions
+
+    #takes an integer action index  (corresponding to the i_th action in the action space) and returns 1 if the action is available and can be added to the queue, -1 if not. 
+    def act(self, index, obs):
+        avalable = check_available_actions(self, obs)
+        if(avalable[index] == 1):
+            return 1
+        else:
+            return -1
+
     def action_step(self):
         if self.actionq:
             action = self.actionq.popleft()
         else:
             action = "No_Op"
 
-        #only some actions need a point
         if ((action == "Select_Point_screen")
            | (action == "Effect_InjectLarva_screen")
            | (action == "Harvest_Gather_screen")
@@ -109,7 +209,7 @@ class Action_Space:
         return {
             "Build_Extractor_screen" : actions.FunctionCall(_BUILD_GAS, [_NOT_QUEUED, target]),
             "Build_Hatchery_screen" : actions.FunctionCall(_BUILD_HATCHERY, [_NOT_QUEUED, target]),
-            "Build_SpawningPool_screen" : actions.FunctionCall(_BUILD_POOL, [_NOT_QUEUED, point]),
+            "Build_SpawningPool_screen" : actions.FunctionCall(_BUILD_POOL, [_NOT_QUEUED, target]),
             "Effect_InjectLarva_screen" : actions.FunctionCall(_INJECT_LARVA, [_NOT_QUEUED, target]),
             "Harvest_Gather_screen" : actions.FunctionCall(_GATHER_RESOURCES, [_NOT_QUEUED, target]),
             "Train_Drone_quick" : actions.FunctionCall(_TRAIN_DRONE, [_NOT_QUEUED]),
@@ -121,7 +221,6 @@ class Action_Space:
             }[action]
 
     # Action space functions
-    #build a hatchery in the selected expo
     def build_Hatchery(self, obs, expo_num):
         #first select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -129,7 +228,7 @@ class Action_Space:
         target = [unit_x[0], unit_y[0]]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
-        #get the coords for the choosen base and build there
+        #get the coords for the next base and build there
         if self.top_left:
             map_target = {
                 2 : _TOP_SECOND,
@@ -152,13 +251,13 @@ class Action_Space:
                 3 : _BOTTOM_THIRD_SCREEN,
                 4 : _BOTTOM_FOURTH_SCREEN
                 }[expo_num]
-        #need to move the camera then build
         self.pointq.append(map_target)
         self.actionq.append("move_camera")
         self.pointq.append(screen_target)
         self.actionq.append("Build_Hatchery_screen")
+        self.expo_count += 1
 
-    #build on the closet geyser   
+    # Builds a geyser if one is taken it builds the other
     def build_Gas_Gyser(self, obs, drone_id):
         #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -171,11 +270,16 @@ class Action_Space:
         unit_y, unit_x = (units == 342).nonzero()
         half = len(unit_x)/2
         #only works for spawning in the bottom, need to figure out how to average location for placement
-        target = [unit_x[:int(half)].mean(), unit_y[:int(half)].mean()]
-        self.pointq.append(target)
+        target1 = [unit_x[:int(half)].mean(), unit_y[:int(half)].mean()]
+        target2 = [unit_x[int(half):].mean(), unit_y[int(half):].mean()]
+        #find built geysers
+        unit_y, unit_x = (units == 88).nonzero()
+        if(target1 == [unit_x.mean(), unit_y.mean()]):
+            self.pointq.append(target2)
+        else:
+            self.pointq.append(target1)
         self.actionq.append("Build_Extractor_screen")
 
-    #build a spawning pool to the left of your current hatch
     def build_Spawning_Pool(self, obs, drone_id):
         #step on is selecting a dron to build with
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -189,12 +293,11 @@ class Action_Space:
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _HATCHERY).nonzero()
         #location is just left of the nearest hatchery
-        target = [unit_x.mean()-4, unit_y.mean()]
+        target = [unit_x.mean()-12, unit_y.mean()]
         self.pointq.append(target)
         self.actionq.append("Build_SpawningPool_screen")
         self.pool_flag = True
-        
-    #send a selected drone to harvest minerals
+    
     def harvest_Minerals(self, obs, drone_id):
         #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -210,7 +313,6 @@ class Action_Space:
         self.pointq.append(target)
         self.actionq.append("Harvest_Gather_screen")
 
-    #send aselected drone to harvest gas
     def harvest_Gas(self, obs, drone_id):
         #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -226,7 +328,6 @@ class Action_Space:
         self.pointq.append(target)
         self.actionq.append("Harvest_Gather_screen")
 
-    #try and find a queen and inject with it
     def inject_Larva(self, obs, queen_id):
         #select a queen
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -241,8 +342,7 @@ class Action_Space:
         target = [unit_x.mean(), unit_y.mean()]
         self.pointq.append(target)
         self.actionq.append("Effect_InjectLarva_screen")
-    
-    #a function for moving between your expos    
+        
     def move_Screen(self, obs, base_num):
        if self.top_left:
             map_target = {
@@ -261,7 +361,6 @@ class Action_Space:
        self.pointq.append(map_target)
        self.actionq.append("move_camera")
 
-    #train a drone at the current hatch
     def train_Drone(self, obs):
         #find larva position
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -274,8 +373,7 @@ class Action_Space:
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
         self.actionq.append("Train_Drone_quick")
-    
-    #train a overlord at the current hatch
+                
     def train_Overlord(self, obs):
         #find larva position
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -289,11 +387,10 @@ class Action_Space:
         self.actionq.append("Select_Point_screen")
         self.actionq.append("Train_Overlord_quick")
 
-    #train a queen at the currect hatch
     def train_Queen(self, obs):
         #if no pool is built redirect to building it instead
         if self.pool_flag == False:
-            self.build_Spawning_Pool(0, obs)
+            self.build_Spawning_Pool(obs, 0)
             return
 
         #select a hatchery
@@ -305,21 +402,11 @@ class Action_Space:
         #que a queen
         self.actionq.append("Train_Queen_quick")
         
-    # compare the provided ID number to the ID of the units allowed
-    def get_actions(self, unit_id):
-        # return the valid actions for the given unit 
-        if unit_id in self.valid_units:
-            return self.valid_units[unit_id]
-        return "Unit not defined in action space"
     #function for checking if drones are doing a non-interuptable task
     def drone_busy(drone_id):
         if drone_id in busy_units:
             return True
         return False
-    #function for finding valid expos
-    def get_base_coord():
-        #need to find a method for getting base expansion coordinates.
-        return [0,0]
 
 
 def main():
