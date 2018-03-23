@@ -74,3 +74,12 @@ def bisection(f, x=0.0, epsilon=1e-4):
     x, xmin, xmax = tf.while_loop(lesser, get_xmax, [x, xmin, xmax], back_prop=False, name="get_xmax")
     x, xmin, xmax = tf.while_loop(not_converged, get_x, [x, xmin, xmax], back_prop=False, name="get_x")
     return x
+
+
+# Performs discounting for the input tensor along the first dimension
+def discount(x, gamma):
+    gamma = tf.constant(gamma)
+    return tf.reverse(tf.scan(lambda prev, curr: gamma*prev + curr, tf.reverse(x, axis=[0]), 0.0), axis=[0])
+
+
+

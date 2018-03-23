@@ -76,7 +76,7 @@ def __main__():
             ckpt = tf.train.get_checkpoint_state(model_path)
             saver.restore(sess, ckpt.model_checkpoint_path)
         else:
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.initialize_all_variables())
 
         worker_threads = []
         for worker in workers:

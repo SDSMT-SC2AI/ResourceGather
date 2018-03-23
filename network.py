@@ -1,10 +1,11 @@
 import tensorflow as tf
-from common.helper_functions import bisection
+from common.helper_functions import bisection, discount
+
 
 class Trainer:
     def __init__(self, scope, optimizer, policy, value_c=0.5, policy_c=1, entropy_c=0.01, max_grad_norm=40.0):
         with tf.variable_scope(scope):
-            self.actions = tf.placeholder(shape=[None], dtype=tf.int32, name="actions")
+            self.actions = tf.placeholder(shape=[None], dtype=tf.int64, name="actions")
             self.rewards = tf.placeholder(shape=[None], dtype=tf.float32)
             self.observations = tf.placeholder(shape=[None, None], dtype=tf.float32)
             self.values = tf.placeholder(shape=[None], dtype=tf.float32)
@@ -70,7 +71,7 @@ class Policy:
             self.base_exploration_rate = tf.constant(network_spec['base exploration rate'])
             self.min_exploration_rate = tf.constant(network_spec['minimum exploration rate'])
             self.max_episodes = tf.constant(max_episodes)
-            self.episode = tf.placeholder(shape=(), dtype=tf.int64)
+            self.episode = tf.placeholder(shape=(), dtype=tf.int32)
             self.exploration = self.min_exploration_rate + \
                 ((self.base_exploration_rate - self.min_exploration_rate)*self.episode)/self.max_episodes
 
@@ -104,7 +105,7 @@ class Policy:
 
             probs = tf.map_fn(get_probs, (loc, scale), back_prop=False)
             self.action = tf.squeeze(tf.multinomial(tf.log(probs), 1))
-            self.value = tf.reduce_sum(probs * self.q) / tf.reduce_sum(probs)
+            self.value = tf.reduce_sum(probs * self.q, axis=1) / tf.reduce_sum(probs, axis=1)
             self.probs = probs
 
             def error_update():
