@@ -24,10 +24,6 @@ class Simple(BaseAgent):
     def __init__(self, name, parent, optimizer):
         super().__init__(name, parent, optimizer, network, Actions(), network_spec)
 
-    def step(self, sess, observation):
-        choice, action_dist, value = self.policy.step(sess, observation, 1)
-        return self.action_space.act(choice), choice, action_dist, value
-
     @staticmethod
     def process_observation(obs, flags=None):
         reward = obs[0][0]

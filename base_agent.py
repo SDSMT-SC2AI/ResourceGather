@@ -25,11 +25,16 @@ class BaseAgent:
         })
 
     def step(self, sess, observation):
-        choice, action_dist, value = self.policy.step(sess, observation)
+        choice, action_dist, value = sess.run([
+            self.policy.action,
+            self.policy.policy_fn,
+            self.policy.value_fn], feed_dict={
+                    self.policy.input: observation,
+                    self.policy.exploration_rate: 1})
         return self.action_space.act(choice), choice, action_dist, value
 
     def value(self, sess, obs):
-        return self.policy.value(sess, obs)
+        return sess.run(self.policy.value_fn, feed_dict={self.policy.input: obs})
 
     def update_policy(self, sess):
         sess.run(self.update_local_policy)
