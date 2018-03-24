@@ -77,9 +77,16 @@ def bisection(f, x=0.0, epsilon=1e-4):
 
 
 # Performs discounting for the input tensor along the first dimension
-def discount(x, gamma):
+def discount(x, gamma, init=0.0):
     gamma = tf.constant(gamma)
-    return tf.reverse(tf.scan(lambda prev, curr: gamma*prev + curr, tf.reverse(x, axis=[0]), 0.0), axis=[0])
+    return tf.reverse(tf.scan(lambda prev, curr: gamma*prev + curr, tf.reverse(x, axis=[0]), init), axis=[0])
+
+
+# For each element x[i], select x[i][indices[i]]
+def select_from(x, indices):
+    dtype = indices.dtype
+    idx = tf.stack([tf.range(tf.shape(indices, out_type=dtype)[0], dtype=dtype), indices], axis=1)
+    return tf.gather_nd(x, idx)
 
 
 

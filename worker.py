@@ -1,22 +1,17 @@
 import tensorflow as tf
 import numpy as np
-import scipy.signal
-import common.debugging as debug
 mse = tf.losses.mean_squared_error
 
 
-# calculates y[i] = x[i] + gamma*y[i+1]
-def discount(x, gamma):
-    return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
-
-
 class Worker:
-    def __init__(self, name, main, env, agent_cls, optimizer, model_path, global_episodes, flags=None, buffer_size=30):
+    def __init__(self, name, main, env, agent_cls, optimizer, model_path, global_episodes,
+                 buffer_min=10, buffer_max=30, flags=None):
         self.name = "worker_" + str(name)
         self.number = name
         self.model_path = model_path
         self.optimizer = optimizer
-        self.buffer_size = buffer_size
+        self.buffer_min = buffer_min
+        self.buffer_max = buffer_max
         self.global_episodes = global_episodes
         self.increment = self.global_episodes.assign_add(1)
         self.episode_rewards = []
@@ -27,30 +22,19 @@ class Worker:
         self.main = main
 
         # Create the local copy of the agent which inherits the global network parameters
-        self.agent = agent_cls(self.name, 'global', optimizer)
+        self.agent = agent_cls(self.name, 'global', optimizer, self.global_episodes)
 
         print('Initializing environment #{}...'.format(self.number))
         self.env = env
 
-    #@debug.dump_args
-    def train(self, rollout, sess, gamma, bootstrap_value):
+    def train(self, rollout, sess, bootstrap_value):
         actions = np.array(rollout[0])
         rewards = np.array(rollout[1])
         observations = np.concatenate(rollout[2])
-        values = np.array(rollout[3])
+        values = np.array(rollout[3] + [bootstrap_value])
 
-        discounted_rewards = discount(rewards, gamma)
-        values_plus = np.concatenate([values, np.array([bootstrap_value])])
-        advantages = discount(rewards + gamma * values_plus[1:] - values_plus[:-1], gamma)
-
-        #print(advantages)
-
-        loss, value_loss, policy_loss, entropy, grad_norms, var_norms, _ = \
-            self.agent.train(sess,
-                             actions,
-                             observations,
-                             discounted_rewards,
-                             advantages)
+        loss, value_loss, policy_loss, entropy, grad_norms, var_norms = \
+            self.agent.train(sess, actions, rewards, observations, values)
         self.agent.update_policy(sess)
         
         return loss / len(rollout), value_loss / len(rollout), policy_loss / len(rollout), entropy / len(rollout), \
@@ -75,15 +59,14 @@ class Worker:
                 reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
                 while not episode_end:
-                    (feedback, actions), choice, action_dist, value = self.agent.step(sess, obs)
-                    env_obs = self.env.step(actions=actions)
+                    choice, value = self.agent.step(sess, obs)
+                    feedback, env_obs = self.env.step(choice)
                     reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
                     for i, v in enumerate([choice, reward + feedback, obs, value]):
                         episode_buffer[i].append(v)
 
                     episode_values.append(value)
-
                     episode_reward += reward + feedback
                     total_steps += 1
                     episode_step_count += 1
@@ -91,11 +74,10 @@ class Worker:
                     if episode_end:
                         break
 
-
                     if len(episode_buffer[0]) == self.buffer_size and episode_step_count != max_episode_length - 1:
                         bootstrap = self.agent.value(sess, obs)
                         loss, value_loss, policy_loss, entropy, gradient_norms, var_norms = \
-                            self.train(episode_buffer, sess, gamma, bootstrap)
+                            self.train(episode_buffer, sess, bootstrap)
                         episode_buffer = [[] for _ in range(4)]
 
                 self.episode_rewards.append(episode_reward)

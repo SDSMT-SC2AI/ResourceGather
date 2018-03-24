@@ -1,40 +1,21 @@
 from common.helper_functions import update_target_graph
-from common.debugging import dump_args
+
 
 class BaseAgent:
-    def __init__(self, name, parent, optimizer, network, action_space, network_spec):
-        self.network_spec = network_spec
-        self.policy = network.Policy(name, self.network_spec)
-        self.trainer = network.Trainer(name, optimizer, self.policy)
+    def __init__(self, name, parent, optimizer, network, episode, policy_spec, trainer_spec):
+        self.policy = network.Policy(name, episode, policy_spec)
+        self.trainer = network.Trainer(name, optimizer, self.policy, trainer_spec)
         self.update_local_policy = update_target_graph(parent, name)
-        self.action_space = action_space
 
-    # @dump_args
-    def train(self, sess, actions, observations, discounted_rewards, advantages):
-        return sess.run([self.trainer.loss,
-                         self.trainer.value_loss,
-                         self.trainer.policy_loss,
-                         self.trainer.entropy,
-                         self.trainer.grad_norms,
-                         self.trainer.var_norms,
-                         self.trainer.apply_grads], feed_dict={
-            self.policy.input: observations,
-            self.trainer.actions: actions,
-            self.trainer.target_v: discounted_rewards,
-            self.trainer.advantages: advantages
-        })
+    def train(self, sess, actions, rewards, observations, values):
+        return self.trainer.train(sess, observations, actions, rewards, values)
 
     def step(self, sess, observation):
-        choice, action_dist, value = sess.run([
-            self.policy.action,
-            self.policy.policy_fn,
-            self.policy.value_fn], feed_dict={
-                    self.policy.input: observation,
-                    self.policy.exploration_rate: 1})
-        return self.action_space.act(choice), choice, action_dist, value
+        choice, value = self.policy.step(sess, observation)
+        return choice, value
 
     def value(self, sess, obs):
-        return sess.run(self.policy.value_fn, feed_dict={self.policy.input: obs})
+        return self.policy.value(sess, obs)
 
     def update_policy(self, sess):
         sess.run(self.update_local_policy)
