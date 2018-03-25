@@ -5,11 +5,13 @@ from common.helper_functions import bisection, discount, select_from
 class Trainer:
     @staticmethod
     def trainer_spec(accuracy_coefficient=1.0,
-                     consistency_coefficient=0.5,
+                     advantage_coefficient=10.0,
+                     consistency_coefficient=3.0,
                      max_grad_norm=40.0,
-                     discount_factor=0.99):
+                     discount_factor=0.6):
         return {
             'accuracy coefficient': accuracy_coefficient,
+            'advantage coefficient': advantage_coefficient,
             'consistency coefficient': consistency_coefficient,
             'max gradient norm': max_grad_norm,
             'discount factor': discount_factor
@@ -18,8 +20,10 @@ class Trainer:
     def __init__(self, scope, optimizer, policy, trainer_spec):
         self.policy = policy
         with tf.variable_scope(scope):
-            a_c, c_c, max_grad_norm, gamma = \
-                [trainer_spec[k] for k in ['accuracy coefficient', 'consistency coefficient',
+            a_c, adv_c, c_c, max_grad_norm, gamma = \
+                [trainer_spec[k] for k in ['accuracy coefficient',
+                                           'advantage coefficient',
+                                           'consistency coefficient',
                                            'max gradient norm', 'discount factor']]
 
             self.actions = tf.placeholder(shape=[None], dtype=tf.int64, name="actions")
@@ -28,9 +32,10 @@ class Trainer:
             q = select_from(policy.q, self.actions)
             discounted_rewards = discount(self.rewards, gamma, self.values[-1])
 
-            self.accuracy_loss = tf.reduce_mean(tf.square(q - discounted_rewards))
+            self.accuracy_loss = tf.reduce_mean(tf.square(q - discounted_rewards)) * (1 - gamma + 0.000001)
             self.consistent_loss = tf.reduce_mean(tf.square(q - self.values[1:]))
-            self.loss = a_c * self.accuracy_loss + c_c * self.consistent_loss
+            self.advantage = tf.reduce_mean(q - self.values[:-1])
+            self.loss = a_c * self.accuracy_loss + c_c * self.consistent_loss - adv_c * self.advantage
 
             # Get gradients from local network using local losses
             local_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
@@ -49,6 +54,7 @@ class Trainer:
                 self.loss,
                 self.accuracy_loss,
                 self.consistent_loss,
+                self.advantage,
                 self.grad_norms,
                 self.var_norms],  # returns
                 [self.apply_grads]],  # ops
@@ -65,11 +71,13 @@ class Policy:
     def policy_spec(input_size=None,
                     num_actions=None,
                     max_episodes=None,
+                    q_range=None,
                     hidden_layer_size=None,
                     error_discount=0.95,
                     base_explore_rate=0.1,
                     min_explore_rate=None):
         return {
+            "q range": q_range,
             "input size": input_size,
             "hidden layer size": hidden_layer_size or (3*input_size)//2,
             "error discount": error_discount,
@@ -98,12 +106,14 @@ class Policy:
                 name="q_error"
             )
             self.previous_q = tf.Variable(
+                initial_value=0.0,
                 expected_shape=(),
                 trainable=False,
                 dtype=tf.float32,
                 name="previous_q"
             )
             self.previous_a = tf.Variable(
+                initial_value=0,
                 expected_shape=(),
                 trainable=False,
                 dtype=tf.int64,
@@ -115,7 +125,8 @@ class Policy:
             self.min_exploration_rate = tf.constant(policy_spec['minimum exploration rate'])
             self.max_episodes = tf.constant(policy_spec['max episodes'])
             self.exploration = self.min_exploration_rate + \
-                ((self.base_exploration_rate - self.min_exploration_rate)*episode)/self.max_episodes
+                ((self.base_exploration_rate - self.min_exploration_rate)*tf.cast(episode, dtype=tf.float32)) \
+                / tf.cast(tf.maximum(self.max_episodes, episode), dtype=tf.float32)
 
             # Define the neural net operations
             self.input = tf.placeholder(shape=[None, policy_spec["input size"]], dtype=tf.float32, name="input")
@@ -131,7 +142,8 @@ class Policy:
             self.q = tf.contrib.layers.fully_connected(
                 inputs=hidden1,
                 num_outputs=policy_spec["number of actions"],
-                weights_initializer=tf.orthogonal_initializer()
+                weights_initializer=tf.orthogonal_initializer(0.1),
+                biases_initializer=tf.random_uniform_initializer(*policy_spec['q range'])
             )
 
             # Calculate the likelihoods of the median of the maximum of q with normal random noise
@@ -140,25 +152,25 @@ class Policy:
             scale = tf.multiply(self.error_factor, tf.sqrt(self.q_error))
             scale = tf.tile(tf.reshape(scale, [1, -1]), [tf.shape(loc)[0], 1])
 
-            def get_probs(loc, scale):
+            def get_probs(args):
+                loc, scale = args
                 dist = tf.distributions.Normal(loc, scale)
                 return 2 * (1 - dist.cdf(bisection(lambda x: 0.5 - tf.reduce_sum(1-dist.cdf(x)),
-                                                   x=tf.reduce_max(loc))))
+                                                   xinit=tf.reduce_max(loc))))
 
-            probs = tf.map_fn(get_probs, (loc, scale), back_prop=False)
-            self.action = tf.squeeze(tf.multinomial(tf.log(probs), 1))
-            self.value = tf.reduce_sum(probs * self.q, axis=1) / tf.reduce_sum(probs, axis=1)
-            self.probs = probs
+            self.probs = tf.map_fn(get_probs, (loc, scale), dtype=tf.float32, back_prop=False)
+            self.action = tf.reshape(tf.multinomial(tf.log(self.probs), 1), [-1])
+            self.value = tf.reduce_sum(self.probs * self.q, axis=1) / tf.reduce_sum(self.probs, axis=1)
 
             def error_update():
-                idx = tf.reshape(self.previous_a, [-1, 1])
+                idx = tf.reshape(self.previous_a, [-1])
                 op1 = tf.scatter_update(self.q_error, idx,
-                                        self.error_discount * tf.gather_nd(self.q_error, idx)
-                                        + tf.square(tf.subtract(self.previous_q, self.value))
-                                        / self.error_discount_sum)
-                op2 = tf.assign(self.previous_a, self.action)
+                                        tf.reshape(self.error_discount * tf.gather_nd(self.q_error, idx)
+                                                   + tf.square(tf.subtract(self.previous_q, self.value[0]))
+                                                   / self.error_discount_sum, [-1]))
+                op2 = tf.assign(self.previous_a, self.action[0])
                 idx = tf.reshape(self.action, [-1, 1])
-                op3 = tf.assign(self.previous_q, tf.squeeze(tf.gather_nd(self.q, idx)))
+                op3 = tf.assign(self.previous_q, tf.gather_nd(self.q[0], idx)[0])
                 return op1, op2, op3
 
             self.error_update_op = error_update()
@@ -168,6 +180,6 @@ class Policy:
                                  (self.error_update_op,)],  # ops
                         feed_dict={self.input: obs})[0]  # input
 
-    def value(self, sess, obs):
+    def get_value(self, sess, obs):
         return sess.run(fetches=self.value,  # returns
                         feed_dict={self.input: obs})  # input

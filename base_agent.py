@@ -12,10 +12,10 @@ class BaseAgent:
 
     def step(self, sess, observation):
         choice, value = self.policy.step(sess, observation)
-        return choice, value
+        return choice[0], value[0]
 
     def value(self, sess, obs):
-        return self.policy.value(sess, obs)
+        return self.policy.get_value(sess, obs)[0]
 
     def update_policy(self, sess):
         sess.run(self.update_local_policy)

@@ -52,8 +52,7 @@ def update_target_graph(from_scope, to_scope):
 
 
 # Performs bisection on a single variable function f using tensorflow
-def bisection(f, x=0.0, epsilon=1e-4):
-    xinit = tf.constant(x, name="x_init", dtype=tf.float32)
+def bisection(f, xinit=tf.constant(0.0, name="x_init", dtype=tf.float32), epsilon=1e-4):
     eps = tf.constant(epsilon, name="epsilon", dtype=tf.float32)
     greater = lambda x, xmin, xmax: f(xmin) > 0
     lesser = lambda x, xmin, xmax: f(xmax) < 0

@@ -5,12 +5,13 @@ import sys
 import threading
 import numpy as np
 import tensorflow as tf
-sys.path.insert(0, abspath(join(dirname(__file__), "../..")))
 from time import sleep
+sys.path.insert(0, abspath(join(dirname(__file__), "../..")))
 import network
 from worker import Worker
 from tests.simple_env.simple_env import SimpleEnv
 import tests.simple_env.simple_agent as agent
+import tests.simple_env.simple_actions as actions
 
 global _max_score, _running_avg_score, _steps, _episodes
 # noinspection PyRedeclaration
@@ -21,7 +22,6 @@ _steps = _episodes = []
 
 def __main__():
     max_episode_length = 300
-    gamma = 0.999
     load_model = False
     model_path = "./test_model"
 
@@ -32,9 +32,10 @@ def __main__():
 
     global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
     optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
-    master_network = network.Policy('global', agent.network_spec)
+    agent.policy_spec.update(actions.action_spec)
+    master_network = network.Policy('global', global_episodes, agent.policy_spec)
     num_workers = psutil.cpu_count()
-    # num_workers = 1
+    # num_workers = 2
 
     config = tf.ConfigProto(
         allow_soft_placement=True,
@@ -52,8 +53,9 @@ def __main__():
     for i in range(num_workers):
         env = SimpleEnv()
         workers.append(
-            Worker(i, sys.modules[__name__], env, agent.Simple,
-                   optimizer, model_path, global_episodes, buffer_size=10))
+            Worker(i, sys.modules[__name__], env, actions, agent.Simple,
+                   optimizer, model_path, global_episodes,
+                   buffer_min=10, buffer_max=30))
     saver = tf.train.Saver(max_to_keep=5)
 
     with tf.Session(config=config) as sess:
@@ -67,7 +69,7 @@ def __main__():
 
         worker_threads = []
         for worker in workers:
-            t = threading.Thread(target=(lambda: worker.work(max_episode_length, gamma, sess, coord, saver)))
+            t = threading.Thread(target=(lambda: worker.work(max_episode_length, sess, coord, saver)))
             t.start()
             sleep(0.05)
             worker_threads.append(t)

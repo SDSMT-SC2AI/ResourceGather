@@ -2,27 +2,19 @@ import numpy as np
 import network
 from base_agent import BaseAgent
 hidden_layer_size = 3
-network_spec = {
-    "input size": 2,
-    "hidden layer size": hidden_layer_size,
-    "number of actions": 3
-}
 
-
-class Actions:
-    def __init__(self):
-        self.choices = [[0], [1], [2]]
-
-    def act(self, choice):
-        if choice in range(len(self.choices)):
-            return 1, self.choices[choice]
-        else:
-            return -1, self.choices[0]
+policy_spec = network.Policy.policy_spec(input_size=2,
+                                         hidden_layer_size=3,
+                                         q_range=(30, 31),
+                                         max_episodes=1000)
+trainer_spec = network.Trainer.trainer_spec(consistency_coefficient=0.1,
+                                            discount_factor=0.9)
 
 
 class Simple(BaseAgent):
-    def __init__(self, name, parent, optimizer):
-        super().__init__(name, parent, optimizer, network, Actions(), network_spec)
+    def __init__(self, name, parent, optimizer, episode, action_spec):
+        policy_spec.update(action_spec)
+        super().__init__(name, parent, optimizer, network, episode, policy_spec, trainer_spec)
 
     @staticmethod
     def process_observation(obs, flags=None):
