@@ -6,7 +6,8 @@ hidden_layer_size = 3
 policy_spec = network.Policy.policy_spec(input_size=2,
                                          hidden_layer_size=3,
                                          q_range=(30, 31),
-                                         max_episodes=1000)
+                                         max_episodes=2500,
+                                         min_explore_rate=0.01)
 trainer_spec = network.Trainer.trainer_spec(consistency_coefficient=0.3,
                                             advantage_coefficient=2.0,
                                             discount_factor=0.9,

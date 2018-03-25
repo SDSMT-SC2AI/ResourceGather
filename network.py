@@ -146,39 +146,17 @@ class Policy:
                 biases_initializer=tf.random_uniform_initializer(*policy_spec['q range'])
             )
 
-            # Calculate the likelihoods of the median of the maximum of q with normal random noise
-            # scale proportional to the estimated rmse error for that particular action
-            loc = self.q
-            scale = tf.multiply(self.error_factor, tf.sqrt(self.q_error))
-            scale = tf.tile(tf.reshape(scale, [1, -1]), [tf.shape(loc)[0], 1])
+            best = tf.argmax(self.q, axis=-1)
+            p_best = 1 - self.exploration
+            p_other = self.exploration / tf.cast(tf.shape(self.q)[-1], dtype=tf.float32)
+            self.probs = tf.one_hot(best, tf.shape(self.q)[-1], dtype=tf.float32) * p_best + p_other
 
-            def get_probs(args):
-                loc, scale = args
-                dist = tf.distributions.Normal(loc, scale)
-                return 2 * (1 - dist.cdf(bisection(lambda x: 0.5 - tf.reduce_sum(1-dist.cdf(x)),
-                                                   xinit=tf.reduce_max(loc))))
-
-            self.probs = tf.map_fn(get_probs, (loc, scale), dtype=tf.float32, back_prop=False)
             self.action = tf.reshape(tf.multinomial(tf.log(self.probs), 1), [-1])
             self.value = tf.reduce_sum(self.probs * self.q, axis=1) / tf.reduce_sum(self.probs, axis=1)
 
-            def error_update():
-                idx = tf.reshape(self.previous_a, [-1])
-                op1 = tf.scatter_update(self.q_error, idx,
-                                        tf.reshape(self.error_discount * tf.gather_nd(self.q_error, idx)
-                                                   + tf.square(tf.subtract(self.previous_q, self.value[0]))
-                                                   / self.error_discount_sum, [-1]))
-                op2 = tf.assign(self.previous_a, self.action[0])
-                idx = tf.reshape(self.action, [-1, 1])
-                op3 = tf.assign(self.previous_q, tf.gather_nd(self.q[0], idx)[0])
-                return op1, op2, op3
-
-            self.error_update_op = error_update()
-
     def step(self, sess, obs):
-        return sess.run(fetches=[(self.action, self.value),  # returns
-                                 (self.error_update_op,)],  # ops
-                        feed_dict={self.input: obs})[0]  # input
+        return sess.run(fetches=[self.action, self.value],  # returns
+                        feed_dict={self.input: obs})  # input
 
     def get_value(self, sess, obs):
         return sess.run(fetches=self.value,  # returns
