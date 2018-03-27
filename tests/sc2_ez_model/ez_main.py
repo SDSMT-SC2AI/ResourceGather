@@ -52,7 +52,7 @@ def __main__():
         workers = []
         # Initialize workers
         for i in range(num_workers):
-            env = SimpleEnv(mode="Accumulating")
+            env = SimpleEnv()
             workers.append(
                 Worker(i, sys.modules[__name__], env, actions, agent.Simple,
                        optimizer, model_path, global_episodes,

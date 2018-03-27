@@ -124,7 +124,7 @@ class Policy:
             self.base_exploration_rate = tf.constant(policy_spec['base exploration rate'])
             self.min_exploration_rate = tf.constant(policy_spec['minimum exploration rate'])
             self.max_episodes = tf.constant(policy_spec['max episodes'])
-            self.exploration = self.min_exploration_rate + \
+            self.exploration = self.base_exploration_rate - \
                 ((self.base_exploration_rate - self.min_exploration_rate)*tf.cast(episode, dtype=tf.float32)) \
                 / tf.cast(tf.maximum(self.max_episodes, episode), dtype=tf.float32)
 

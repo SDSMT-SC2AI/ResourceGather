@@ -112,10 +112,10 @@ class Worker:
                   #  np.sum(self.main._steps), np.sum(self.main._episodes), self.main._max_score, self.main._running_avg_score))
 
                 print("{:6.0f} Episodes: "
-                      "loss = {:10.4f}, "
-                      "accuracy = {:10.4f}, "
-                      "consistency = {:10.4f}, "
-                      "advantage = {:10.4f}, "
+                      "loss = {:13.4f}, "
+                      "accuracy = {:13.4f}, "
+                      "consistency = {:13.4f}, "
+                      "advantage = {:8.4f}, "
                       "reward = {:4d}".format(
                         np.sum(self.main._episodes), loss, accuracy, consistency, advantage, episode_reward))
 
