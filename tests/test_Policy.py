@@ -10,7 +10,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 def test_policy():
     tf.reset_default_graph()
     tf.set_random_seed(0)
-    policy = Policy('global', network_spec={
+    policy = Policy('global', policy_spec={
         "input size": 2,
         "hidden layer size": 2,
         "number of actions": 2})
