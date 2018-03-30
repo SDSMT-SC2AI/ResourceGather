@@ -15,8 +15,7 @@ def process_observation(env_obs, flags=None):
     larva_by_base = np.asarray(get_larva_by_base(env_obs, bases, flags))
     obs = np.concatenate([available_actions, minerals, food_available, number_of_bases, larva_by_base])
     episode_end = (env_obs[0].step_type == environment.StepType.LAST)
-    return reward, obs, episode_end
-
+    return reward, np.reshape(obs, (1, len(obs))), episode_end
 
 
 def get_larva_by_base(env_obs, bases, flags=None):

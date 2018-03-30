@@ -3,12 +3,12 @@ import observer
 import network
 hidden_layer_size = (3*observer.observation_size)//2
 
-policy_spec = network.Policy.policy_spec(input_size=20, 
+policy_spec = network.Policy.policy_spec(
+            input_size=20,
             num_actions=12,
             max_episodes=2500,
             q_range=(30, 31),
-            hidden_layer_size=30, 
-            error_discount=0.95, 
+            hidden_layer_size=30,
             base_explore_rate=0.1,                 
             min_explore_rate=0.01)
 trainer_spec = network.Trainer.trainer_spec()

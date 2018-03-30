@@ -74,68 +74,37 @@ class Policy:
                     max_episodes=None,
                     q_range=None,
                     hidden_layer_size=None,
-                    error_discount=0.95,
                     base_explore_rate=0.1,
                     min_explore_rate=None):
         return {
-            "q range": q_range,
-            "input size": input_size,
-            "hidden layer size": hidden_layer_size or (3*input_size)//2,
-            "error discount": error_discount,
-            "number of actions": num_actions,
-            "base exploration rate": base_explore_rate,
-            "minimum exploration rate": min_explore_rate or base_explore_rate / 4,
-            "max episodes": max_episodes
+            "q_range": q_range,
+            "input_size": input_size,
+            "hidden_layer_size": hidden_layer_size or (3*input_size)//2,
+            "num_actions": num_actions,
+            "base_explore_rate": base_explore_rate,
+            "min_explore_rate": min_explore_rate or base_explore_rate / 4,
+            "max_episodes": max_episodes
         }
 
     def __init__(self, scope, episode, policy_spec):
         self.network_spec = policy_spec
 
         with tf.variable_scope(scope):
-            # Define some variables for quantifying the error of our q estimator
-            self.error_discount = tf.constant(policy_spec['error discount'], dtype=tf.float32)
-            self.error_discount_sum = tf.constant(1.0 / (1 - policy_spec['error discount']), dtype=tf.float32)
-            self.error_factor = tf.Variable(
-                initial_value=1.0,
-                trainable=False,
-                dtype=tf.float32,
-                name="error_factor"
-            )
-            self.q_error = tf.Variable(
-                initial_value=tf.ones([policy_spec['number of actions']]),
-                trainable=False,
-                dtype=tf.float32,
-                name="q_error"
-            )
-            self.previous_q = tf.Variable(
-                initial_value=0.0,
-                expected_shape=(),
-                trainable=False,
-                dtype=tf.float32,
-                name="previous_q"
-            )
-            self.previous_a = tf.Variable(
-                initial_value=0,
-                expected_shape=(),
-                trainable=False,
-                dtype=tf.int64,
-                name="previous_a"
-            )
-
             # Define the exploration rate reduction policy
-            self.base_exploration_rate = tf.constant(policy_spec['base exploration rate'])
-            self.min_exploration_rate = tf.constant(policy_spec['minimum exploration rate'])
-            self.max_episodes = tf.constant(policy_spec['max episodes'])
+            self.base_exploration_rate = tf.constant(policy_spec['base_explore_rate'])
+            self.min_exploration_rate = tf.constant(policy_spec['min_explore_rate'])
+            self.max_episodes = tf.constant(policy_spec['max_episodes'])
             self.exploration = self.base_exploration_rate - \
                 ((self.base_exploration_rate - self.min_exploration_rate)*tf.cast(episode, dtype=tf.float32)) \
                 / tf.cast(tf.maximum(self.max_episodes, episode), dtype=tf.float32)
 
             # Define the neural net operations
-            self.input = tf.placeholder(shape=[1, policy_spec['input size']], dtype=tf.float32, name="input")
-            # print("Hidden layer size: ", policy_spec['hidden layer size'])
+            self.input = tf.placeholder(shape=[None, policy_spec['input_size']], dtype=tf.float32, name="input")
+
+            # print("Hidden layer size: ", policy_spec['hidden_layer_size'])
             hidden1 = tf.contrib.layers.fully_connected(
                 inputs=self.input,
-                num_outputs=policy_spec['hidden layer size'],
+                num_outputs=policy_spec['hidden_layer_size'],
                 activation_fn=tf.nn.elu,
                 biases_initializer=tf.random_uniform_initializer(-1, 1)
             )
@@ -143,9 +112,9 @@ class Policy:
 
             self.q = tf.contrib.layers.fully_connected(
                 inputs=hidden1,
-                num_outputs=policy_spec["number of actions"],
+                num_outputs=policy_spec["num_actions"],
                 weights_initializer=tf.orthogonal_initializer(0.1),
-                biases_initializer=tf.random_uniform_initializer(*policy_spec['q range'])
+                biases_initializer=tf.random_uniform_initializer(*policy_spec['q_range'])
             )
 
             best = tf.argmax(self.q, axis=-1)
@@ -158,8 +127,8 @@ class Policy:
 
     def step(self, sess, obs):
         return sess.run(fetches=[self.action, self.value],  # returns
-                        feed_dict={self.input: np.reshape(obs, (1, len(obs)))})  # input (must match self.input dimensions)
+                        feed_dict={self.input: obs})  # input
 
     def get_value(self, sess, obs):
         return sess.run(fetches=self.value,  # returns
-                        feed_dict={self.input: np.reshape(obs, (1, len(obs)))})  # input
+                        feed_dict={self.input: obs})  # input
