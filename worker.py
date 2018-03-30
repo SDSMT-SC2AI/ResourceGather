@@ -49,7 +49,6 @@ class Worker:
             var_norms
 
     def do_actions(self, choice, env_obs):
-        # env_obs = None
         feed_back, queue = self.actions.act(choice, env_obs[0])
         for action in queue:
             env_obs = self.env.step(actions=[action])
@@ -75,7 +74,7 @@ class Worker:
                 reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
                 while not episode_end:
-                    choice, value = self.agent.step(sess, obs) # Failing here at the moment
+                    choice, value = self.agent.step(sess, obs) 
                     feedback, env_obs = self.do_actions(choice, env_obs)
                     reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 

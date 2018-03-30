@@ -48,10 +48,9 @@ flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
 flags.DEFINE_integer("parallel", 1, "How many instances to run in parallel.")
 
 flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
-
 flags.DEFINE_string("map", "AbyssalReefLE_RL", "Name of a map to use.")
-# flags.mark_flag_as_required("map")
 
+# Network specific flags
 flags.DEFINE_integer("max_mineral_cost", 300,
                      "Maximum mineral cost of any one thing.")
 flags.DEFINE_integer("max_bases", 5,
@@ -64,8 +63,8 @@ def main(unused_argv):
     load_model = False
     model_path = './model'
     flags = parse_args()
-    stopwatch.sw.enabled = False # FLAGS.profile or FLAGS.trace
-    stopwatch.sw.trace = False # FLAGS.trace
+    stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
+    stopwatch.sw.trace = FLAGS.trace
 
     agent_cls = agent.Smart
     action_space = Action_Space()
@@ -77,24 +76,16 @@ def main(unused_argv):
     tf.reset_default_graph()
     config = tf.ConfigProto(
         allow_soft_placement=True,
-        intra_op_parallelism_threads=0,
-        inter_op_parallelism_threads=0)
+        intra_op_parallelism_threads=0, # Lets the system decide
+        inter_op_parallelism_threads=0) # Lets the system decide
     config.gpu_options.allow_growth = True
 
     with tf.device("/cpu:0"):
         global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
         optimizer = tf.train.AdamOptimizer(learning_rate=0.005)
-        # agent.policy_spec.update(input_size=20, 
-        #     num_actions=_MAX_AVAIL_ACTIONS,
-        #     max_episodes=2500,
-        #     q_range=(30, 31),
-        #     hidden_layer_size=3, 
-        #     error_discount=0.95, 
-        #     base_explore_rate=0.1,                 
-        #     min_explore_rate=0.01)
         master_network = agent.network.Policy('global', global_episodes, agent.policy_spec)
         # num_workers = psutil.cpu_count()
-        num_workers = 1
+        num_workers = 1 # Hardcoded to one for quicker testing
 
         global _max_score, _running_avg_score, _steps, _episodes
         _max_score = 0

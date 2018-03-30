@@ -113,16 +113,13 @@ class Action_Space:
         larva_Available = len(GetUnits(_LARVA, obs.raw_obs.raw_data.units))# - self.actionq.count("Train_Drone_quick") - self.actionq.count("Train_Overlord_quick")
         #TODO get queen and gas info from feture layers
         queen_flag = False
-        # queen_y, queen_x = (_UNIT_TYPE == _QUEEN).nonzero()
         if len(GetUnits(_QUEEN, obs.raw_obs.raw_data.units)) != 0:
             queen_flag = True
         drone_flag = False
-        # drone_y, drone_x = (_UNIT_TYPE == _DRONE).nonzero()
-        if len(GetUnits(_DRONE, obs.raw_obs.raw_data.units)):
+        if len(GetUnits(_DRONE, obs.raw_obs.raw_data.units)) != 0:
             drone_flag = True
         hatch_flag = False
-        # hatch_y, hatch_x = (_UNIT_TYPE == _HATCHERY).nonzero()
-        if len(GetUnits(_HATCHERY, obs.raw_obs.raw_data.units)):
+        if len(GetUnits(_HATCHERY, obs.raw_obs.raw_data.units)) != 0:
             hatch_flag = True
          
         supply_Available = player_info[_SUPPLY_CAP] - player_info[_SUPPLY_USED]

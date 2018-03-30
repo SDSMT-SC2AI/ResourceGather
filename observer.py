@@ -6,24 +6,8 @@ observation_size = 0
 
 
 def process_observation(env_obs, flags=None):
-    # for thing in env_obs.observation['available_actions']:
-        # print("Thing: ", thing)
-    # for i, thing in enumerate(env_obs):
-    #     for j, thing2 in enumerate(thing):
-    #         print
-    # print("Score: ", env_obs.raw_obs.score.score)
-    # exit()
     reward = env_obs[0].raw_obs.score.score
-    # all_larva = GetUnits(151, env_obs)
-    # print(env_obs[0].raw_obs.raw_data.units)
-    # exit()
     available_actions = np.array(Action_Space.check_available_actions(env_obs[0].observation['available_actions'], env_obs[0]))
-    # val, count = np.unique(available_actions, return_counts=True)
-    # print("\n\nAvailable actions: ", available_actions)
-    # print("Action count: ", count[1])
-    # print()
-    # exit()
-
     minerals = np.array([min(env_obs[0].raw_obs.player_common.minerals, flags.max_mineral_cost) / flags.max_mineral_cost])
     food_available = np.array([env_obs[0].raw_obs.player_common.food_cap - env_obs[0].raw_obs.player_common.food_used])
     bases = GetUnits(86, env_obs[0].raw_obs.raw_data.units)
