@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 from common.helper_functions import bisection, discount, select_from
 
 
@@ -89,6 +90,7 @@ class Policy:
 
     def __init__(self, scope, episode, policy_spec):
         self.network_spec = policy_spec
+
         with tf.variable_scope(scope):
             # Define some variables for quantifying the error of our q estimator
             self.error_discount = tf.constant(policy_spec['error discount'], dtype=tf.float32)
@@ -100,7 +102,7 @@ class Policy:
                 name="error_factor"
             )
             self.q_error = tf.Variable(
-                initial_value=tf.ones([policy_spec["number of actions"]]),
+                initial_value=tf.ones([policy_spec['number of actions']]),
                 trainable=False,
                 dtype=tf.float32,
                 name="q_error"
@@ -129,11 +131,11 @@ class Policy:
                 / tf.cast(tf.maximum(self.max_episodes, episode), dtype=tf.float32)
 
             # Define the neural net operations
-            self.input = tf.placeholder(shape=[None, policy_spec["input size"]], dtype=tf.float32, name="input")
-
+            self.input = tf.placeholder(shape=[1, policy_spec['input size']], dtype=tf.float32, name="input")
+            # print("Hidden layer size: ", policy_spec['hidden layer size'])
             hidden1 = tf.contrib.layers.fully_connected(
                 inputs=self.input,
-                num_outputs=policy_spec["hidden layer size"],
+                num_outputs=policy_spec['hidden layer size'],
                 activation_fn=tf.nn.elu,
                 biases_initializer=tf.random_uniform_initializer(-1, 1)
             )
@@ -156,8 +158,8 @@ class Policy:
 
     def step(self, sess, obs):
         return sess.run(fetches=[self.action, self.value],  # returns
-                        feed_dict={self.input: obs})  # input
+                        feed_dict={self.input: np.reshape(obs, (1, len(obs)))})  # input (must match self.input dimensions)
 
     def get_value(self, sess, obs):
         return sess.run(fetches=self.value,  # returns
-                        feed_dict={self.input: obs})  # input
+                        feed_dict={self.input: np.reshape(obs, (1, len(obs)))})  # input

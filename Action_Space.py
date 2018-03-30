@@ -16,6 +16,8 @@ from pysc2.maps import ladder
 from pysc2.lib import features
 from pysc2.lib import point
 
+from common.helper_functions import GetUnits
+
 #units
 _DRONE = 104
 _HATCHERY = 86
@@ -35,6 +37,8 @@ _TRAIN_DRONE = actions.FUNCTIONS.Train_Drone_quick.id
 _TRAIN_QUEEN = actions.FUNCTIONS.Train_Queen_quick.id
 _TRAIN_OVERLORD = actions.FUNCTIONS.Train_Overlord_quick.id
 _MOVE_CAMERA = actions.FUNCTIONS.move_camera.id
+_MAX_AVAIL_ACTIONS = 12
+
 
 #feature info
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
@@ -80,7 +84,9 @@ class Action_Space:
        86: ("Train_Queen_quick")}  # hatchery
     pool_flag = False
     top_left = True
-
+    action_spec = {
+    'number of actions': _MAX_AVAIL_ACTIONS # Actions should be in a dict or something so we can run len() etc. on them
+    }
 
     def __init__(self):
         self.busy_units = {}
@@ -100,37 +106,37 @@ class Action_Space:
     # takes in the available actions from the observation (should be a list of action_ids) and returns a list of 0's and 1's with respect to our action space.
     # 0 if the i_th action is not available, 1 if it is available. 
     def check_available_actions(self, obs):
-        #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas
+        #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas        
         player_info = obs.observation["player"]
         units = obs.observation["screen"][_UNIT_TYPE]
         actions = []
-        larva_Available = player_info[_LARVA_AVALABLE] - self.actionq.count["Train_Drone_quick"] - self.actionq.count["Train_Overlord_quick"]
+        larva_Available = len(GetUnits(_LARVA, obs.raw_obs.raw_data.units))# - self.actionq.count("Train_Drone_quick") - self.actionq.count("Train_Overlord_quick")
         #TODO get queen and gas info from feture layers
-        queen_Flag = False
-        queen_y, queen_x = (_UNIT_TYPE == _QUEEN).nonzero()
-        if(queen_y.any()):
-            queen_Flag = True
-        drone_Flag = False
-        drone_y, drone_x = (_UNIT_TYPE == _DRONE).nonzero()
-        if(drone_y.any()):
-            drone_Flag = True
-        hatch_Flag = False
-        hatch_y, hatch_x = (_UNIT_TYPE == _HATCHERY).nonzero()
-        if(hatch_y.any()):
-            hatch_Flag = True
+        queen_flag = False
+        # queen_y, queen_x = (_UNIT_TYPE == _QUEEN).nonzero()
+        if len(GetUnits(_QUEEN, obs.raw_obs.raw_data.units)) != 0:
+            queen_flag = True
+        drone_flag = False
+        # drone_y, drone_x = (_UNIT_TYPE == _DRONE).nonzero()
+        if len(GetUnits(_DRONE, obs.raw_obs.raw_data.units)):
+            drone_flag = True
+        hatch_flag = False
+        # hatch_y, hatch_x = (_UNIT_TYPE == _HATCHERY).nonzero()
+        if len(GetUnits(_HATCHERY, obs.raw_obs.raw_data.units)):
+            hatch_flag = True
          
         supply_Available = player_info[_SUPPLY_CAP] - player_info[_SUPPLY_USED]
 
 
 
         #hatch check
-        if(player_info[_PLAYER_MINERALS]>=300 and drone_Flag and self.expo_count < 3):
+        if(player_info[_PLAYER_MINERALS]>=300 and drone_flag and self.expo_count < 3):
             actions.append(1)
         else:
             actions.append(0)
 
         #geyser check
-        if(player_info[_PLAYER_MINERALS]>=25 and drone_Flag):
+        if(player_info[_PLAYER_MINERALS]>=25 and drone_flag):
             actions.append(1)
         else:
             actions.append(0)
@@ -148,13 +154,13 @@ class Action_Space:
             actions.append(0)
 
         #queen conditions
-        if(player_info[_PLAYER_MINERALS]>=200 and hatch_Flag):
+        if(player_info[_PLAYER_MINERALS]>=200 and hatch_flag):
             actions.append(1)
         else:
             actions.append(0)
 
         #inject check
-        if(queen_Flag):
+        if(queen_flag):
             actions.append(1)
         else:
             actions.append(0)
@@ -166,13 +172,13 @@ class Action_Space:
         actions.append(1)
 
         #min check
-        if(drone_Flag):
+        if(drone_flag):
             actions.append(1)
         else:
             actions.append(0)
 
         #gas check
-        if(drone_Flag):
+        if(drone_flag):
             actions.append(1)
         else:
             actions.append(0)
@@ -182,11 +188,11 @@ class Action_Space:
 
     #takes an integer action index  (corresponding to the i_th action in the action space) and returns 1 if the action is available and can be added to the queue, -1 if not. 
     def act(self, index, obs):
-        avalable = check_available_actions(self, obs)
+        avalable = self.check_available_actions(obs)
         if(avalable[index] == 1):
-            return 1
+            return 1, self.actionq
         else:
-            return -1
+            return -1, self.actionq
 
     def action_step(self):
         if self.actionq:

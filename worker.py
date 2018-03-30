@@ -48,9 +48,9 @@ class Worker:
             grad_norms, \
             var_norms
 
-    def do_actions(self, choice):
-        env_obs = None
-        feed_back, queue = self.actions.act(choice)
+    def do_actions(self, choice, env_obs):
+        # env_obs = None
+        feed_back, queue = self.actions.act(choice, env_obs[0])
         for action in queue:
             env_obs = self.env.step(actions=[action])
         return feed_back, env_obs
@@ -61,6 +61,7 @@ class Worker:
         total_steps = 0
         print("Starting worker " + str(self.number))
         with sess.as_default(), sess.graph.as_default():
+            
             while not coord.should_stop():
                 self.agent.update_policy(sess)
 
@@ -70,12 +71,12 @@ class Worker:
                 episode_step_count = 0
 
                 # Start new episode
-                env_obs = self.env.reset()
+                env_obs = self.env.reset() # There is only one agent running, so [0]
                 reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
                 while not episode_end:
-                    choice, value = self.agent.step(sess, obs)
-                    feedback, env_obs = self.do_actions(choice)
+                    choice, value = self.agent.step(sess, obs) # Failing here at the moment
+                    feedback, env_obs = self.do_actions(choice, env_obs)
                     reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
 
                     for i, v in enumerate([choice, reward + feedback, obs, value]):
@@ -95,6 +96,7 @@ class Worker:
                             self.train(episode_buffer, sess, bootstrap)
                         episode_buffer = [feed[-self.buffer_min:] for feed in episode_buffer]
 
+                
                 self.episode_rewards.append(episode_reward)
                 self.episode_lengths.append(episode_step_count)
                 self.episode_mean_values.append(np.mean(episode_values))
