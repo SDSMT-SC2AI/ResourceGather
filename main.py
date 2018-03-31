@@ -57,16 +57,13 @@ flags.DEFINE_integer("max_bases", 5,
 
 def main():
     max_episode_length = 300
-    gamma = 0.99
     load_model = False
     model_path = './model'
     flags = common.parse_args.parse_args()
-    print(vars(flags))
     stopwatch.sw.enabled = flags.profile or flags.trace
     stopwatch.sw.trace = flags.trace
 
     agent_cls = agent.Smart
-    action_space = Action_Space()
     maps.get(flags.map)
 
     if not os.path.exists(model_path):
@@ -105,7 +102,7 @@ def main():
                 name=i,
                 main=sys.modules[__name__],
                 env=env,
-                actions=action_space,
+                actions=Action_Space(),
                 agent_cls=agent_cls,
                 optimizer=optimizer,
                 model_path=model_path,

@@ -53,10 +53,10 @@ _SUPPLY_USED = 3
 _SUPPLY_CAP = 4
 _LARVA_AVALABLE = 10
 
-#expansion map coordinites for moving the camera and the screen coords for the hatch
-#Top left points
-_BOTTOM_START = [52,50]
-_BOTTOM_SECOND = [41,48]
+# expansion map coordinites for moving the camera and the screen coords for the hatch
+# Top left points
+_BOTTOM_START = [52, 50]
+_BOTTOM_SECOND = [41, 48]
 _BOTTOM_SECOND_SCREEN = [40, 33]
 _BOTTOM_THIRD = [51, 41]
 _BOTTOM_THIRD_SCREEN = [30, 27]
@@ -64,16 +64,15 @@ _BOTTOM_FOURTH = [42, 41]
 _BOTTOM_FOURTH_SCREEN = [30, 30]
 
 
-"""
-Bottom right points
+# Bottom right points
 _TOP_START = [12, 13]
-_TOP_SECOND = [22,18]
+_TOP_SECOND = [22, 18]
 _TOP_SECOND_SCREEN = [44, 42]
-_TOP_THIRD = [13,26]
+_TOP_THIRD = [13, 26]
 _TOP_THIRD_SCREEN = [40, 43]
-_TOP_FOURTH = [22,26]
+_TOP_FOURTH = [22, 26]
 _TOP_FOURTH_SCREEN = [37, 42]
-"""
+
 
 
 class Action_Space:
@@ -193,23 +192,23 @@ class Action_Space:
     def act(self, index, obs, drone_id):
         avalable = self.check_available_actions(obs)
         action_Dict = {
-        0 : self.build_Hatchery,
-        1 : self.build_Gas_Gyser,
-        2 : self.train_Drone,
-        3 : self.train_Overlord,
-        4 : self.train_Queen,
-        5 : self.inject_Larva,
-        6 : self.move_Screen1,
-        7 : self.move_Screen2,     
-        8 : self.move_Screen3,
-        9 : self.move_Screen4,
-        10 : self.harvest_Minerals,
-        11 : self.harvest_Gas
+            0 : self.build_Hatchery,
+            1 : self.build_Gas_Gyser,
+            2 : self.train_Drone,
+            3 : self.train_Overlord,
+            4 : self.train_Queen,
+            5 : self.inject_Larva,
+            6 : self.move_Screen1,
+            7 : self.move_Screen2,
+            8 : self.move_Screen3,
+            9 : self.move_Screen4,
+            10 : self.harvest_Minerals,
+            11 : self.harvest_Gas
         }
 
         if(avalable[index] == 1):
             action_Dict[index](obs, drone_id)
-            return 1
+            return 1, self.actionq
         else:
             return -1, self.actionq
 

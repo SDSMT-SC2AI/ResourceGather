@@ -49,8 +49,9 @@ class Worker:
             var_norms
 
     def do_actions(self, choice, env_obs):
-        feed_back, queue = self.actions.act(choice, env_obs[0])
-        for action in queue:
+        feed_back, queue = self.actions.act(choice, env_obs[0], 0)
+        while queue:
+            action = self.actions.action_step()
             env_obs = self.env.step(actions=[action])
         return feed_back, env_obs
 
