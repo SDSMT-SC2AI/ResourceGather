@@ -93,6 +93,7 @@ class Action_Space:
         self.actionq = deque([])
         self.pointq = deque([])
         self.expo_count = 0
+        #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas
         return
 
     def Start_pos(self, obs):
@@ -110,6 +111,7 @@ class Action_Space:
         player_info = obs.observation["player"]
         units = obs.observation["screen"][_UNIT_TYPE]
         actions = []
+
         larva_Available = len(GetUnits(_LARVA, obs.raw_obs.raw_data.units))# - self.actionq.count("Train_Drone_quick") - self.actionq.count("Train_Overlord_quick")
         #TODO get queen and gas info from feture layers
         queen_flag = False
@@ -122,9 +124,13 @@ class Action_Space:
         if len(GetUnits(_HATCHERY, obs.raw_obs.raw_data.units)) != 0:
             hatch_flag = True
          
+        gas_flag = True
+        gas_y, gas_x = (units == 342).nonzero()
+        ext_y, ext_x = (units == 88).nonzero()
+        if(len(gas_y)==len(ext_y)):
+            gas_flag = False
+
         supply_Available = player_info[_SUPPLY_CAP] - player_info[_SUPPLY_USED]
-
-
 
         #hatch check
         if(player_info[_PLAYER_MINERALS]>=300 and drone_flag and self.expo_count < 3):
@@ -133,7 +139,7 @@ class Action_Space:
             actions.append(0)
 
         #geyser check
-        if(player_info[_PLAYER_MINERALS]>=25 and drone_flag):
+        if(player_info[_PLAYER_MINERALS]>=25 and drone_flag and gas_flag):
             actions.append(1)
         else:
             actions.append(0)
@@ -183,11 +189,27 @@ class Action_Space:
 
         return actions
 
-    #takes an integer action index  (corresponding to the i_th action in the action space) and returns 1 if the action is available and can be added to the queue, -1 if not. 
-    def act(self, index, obs):
+    #takes an integer action index  (corresponding to the i_th action in the action space) and returns 1 if the action is available and can be added to the queue, -1 if not.
+    def act(self, index, obs, drone_id):
         avalable = self.check_available_actions(obs)
+        action_Dict = {
+        0 : self.build_Hatchery,
+        1 : self.build_Gas_Gyser,
+        2 : self.train_Drone,
+        3 : self.train_Overlord,
+        4 : self.train_Queen,
+        5 : self.inject_Larva,
+        6 : self.move_Screen1,
+        7 : self.move_Screen2,     
+        8 : self.move_Screen3,
+        9 : self.move_Screen4,
+        10 : self.harvest_Minerals,
+        11 : self.harvest_Gas
+        }
+
         if(avalable[index] == 1):
-            return 1, self.actionq
+            action_Dict[index](obs, drone_id)
+            return 1
         else:
             return -1, self.actionq
 
@@ -223,7 +245,7 @@ class Action_Space:
             }[action]
 
     # Action space functions
-    def build_Hatchery(self, obs, expo_num):
+    def build_Hatchery(self, obs, drone_id):
         #first select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _DRONE).nonzero()
@@ -233,26 +255,27 @@ class Action_Space:
         #get the coords for the next base and build there
         if self.top_left:
             map_target = {
-                2 : _TOP_SECOND,
-                3 : _TOP_THIRD,
-                4 : _TOP_FOURTH
-                }[expo_num]
+                0 : _TOP_SECOND,
+                1 : _TOP_THIRD,
+                2 : _TOP_FOURTH
+                }[self.expo_count]
             screen_target = {
-                2 : _TOP_SECOND_SCREEN,
-                3 : _TOP_THIRD_SCREEN,
-                4 : _TOP_FOURTH_SCREEN
-                }[expo_num]
+                0 : _TOP_SECOND_SCREEN,
+                1 : _TOP_THIRD_SCREEN,
+                2 : _TOP_FOURTH_SCREEN
+                }[self.expo_count]
         else:
            map_target = {
-                2 : _BOTTOM_SECOND,
-                3 : _BOTTOM_THIRD,
-                4 : _BOTTOM_FOURTH
-                }[expo_num]
+                0 : _BOTTOM_SECOND,
+                1 : _BOTTOM_THIRD,
+                2 : _BOTTOM_FOURTH
+                }[self.expo_count]
            screen_target = {
-                2 : _BOTTOM_SECOND_SCREEN,
-                3 : _BOTTOM_THIRD_SCREEN,
-                4 : _BOTTOM_FOURTH_SCREEN
-                }[expo_num]
+                0 : _BOTTOM_SECOND_SCREEN,
+                1 : _BOTTOM_THIRD_SCREEN,
+                2 : _BOTTOM_FOURTH_SCREEN
+                }[self.expo_count]
+        self.expo_count += 1;
         self.pointq.append(map_target)
         self.actionq.append("move_camera")
         self.pointq.append(screen_target)
@@ -328,7 +351,7 @@ class Action_Space:
         #find an extractor and que clicking it
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == 88).nonzero()
-        target = [unit_x.mean(), unit.mean()]
+        target = [unit_x.mean(), unit_y.mean()]
         self.pointq.append(target)
         self.actionq.append("Harvest_Gather_screen")
 
@@ -347,25 +370,39 @@ class Action_Space:
         self.pointq.append(target)
         self.actionq.append("Effect_InjectLarva_screen")
         
-    def move_Screen(self, obs, base_num):
+    def move_Screen1(self, obs, base_num):
        if self.top_left:
-            map_target = {
-                1 : _TOP_START,
-                2 : _TOP_SECOND,
-                3 : _TOP_THIRD,
-                4 : _TOP_FOURTH
-                }[base_num]
+            map_target = _TOP_START
        else:
-           map_target = {
-                1 : _BOTTOM_START,
-                2 : _BOTTOM_SECOND,
-                3 : _BOTTOM_THIRD,
-                4 : _BOTTOM_FOURTH
-                }[base_num]
+           map_target = _BOTTOM_START
        self.pointq.append(map_target)
        self.actionq.append("move_camera")
 
-    def train_Drone(self, obs):
+    def move_Screen2(self, obs, base_num):
+       if self.top_left:
+            map_target = _TOP_SECOND
+       else:
+           map_target = _BOTTOM_SECOND
+       self.pointq.append(map_target)
+       self.actionq.append("move_camera")
+
+    def move_Screen3(self, obs, base_num):
+       if self.top_left:
+            map_target = _TOP_THIRD
+       else:
+           map_target = _BOTTOM_THIRD
+       self.pointq.append(map_target)
+       self.actionq.append("move_camera")
+
+    def move_Screen4(self, obs, base_num):
+       if self.top_left:
+            map_target =  _TOP_FOURTH
+       else:
+           map_target = _BOTTOM_FOURTH
+       self.pointq.append(map_target)
+       self.actionq.append("move_camera")
+
+    def train_Drone(self, obs, larva_id):
         #find larva position
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _LARVA).nonzero()
@@ -378,7 +415,7 @@ class Action_Space:
         self.actionq.append("Select_Point_screen")
         self.actionq.append("Train_Drone_quick")
                 
-    def train_Overlord(self, obs):
+    def train_Overlord(self, obs, drone_id):
         #find larva position
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _LARVA).nonzero()
@@ -391,7 +428,7 @@ class Action_Space:
         self.actionq.append("Select_Point_screen")
         self.actionq.append("Train_Overlord_quick")
 
-    def train_Queen(self, obs):
+    def train_Queen(self, obs, hatch_id):
         #if no pool is built redirect to building it instead
         if self.pool_flag == False:
             self.build_Spawning_Pool(obs, 0)
