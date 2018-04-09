@@ -24,7 +24,7 @@ def parse_args():
                         help="To train or not to train")
 
     parser.add_argument("--render",
-                        default=False, type=bool,
+                        default=True, type=bool,
                         help="Render feature layers with pygame")
 
     parser.add_argument("--episodes",

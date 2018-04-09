@@ -37,7 +37,8 @@ _TRAIN_DRONE = actions.FUNCTIONS.Train_Drone_quick.id
 _TRAIN_QUEEN = actions.FUNCTIONS.Train_Queen_quick.id
 _TRAIN_OVERLORD = actions.FUNCTIONS.Train_Overlord_quick.id
 _MOVE_CAMERA = actions.FUNCTIONS.move_camera.id
-_MAX_AVAIL_ACTIONS = 12
+_SMART = actions.FUNCTIONS.Smart_screen.id
+_MAX_AVAIL_ACTIONS = 8
 
 
 #feature info
@@ -89,9 +90,20 @@ class Action_Space:
 
     def __init__(self):
         self.busy_units = {}
-        self.actionq = deque([])
+        self.actionq = deque(["No_Op"]*10)
         self.pointq = deque([])
         self.expo_count = 0
+        self.action_Dict = {
+            0 : self.build_Hatchery,
+            1 : self.build_Gas_Gyser,
+            2 : self.train_Drone,
+            3 : self.train_Overlord,
+            4 : self.train_Queen,
+            5 : self.inject_Larva,
+            6 : self.harvest_Minerals,
+            7 : self.harvest_Gas
+        }
+
         #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas
         return
 
@@ -124,10 +136,10 @@ class Action_Space:
             hatch_flag = True
          
         gas_flag = True
-        gas_y, gas_x = (units == 342).nonzero()
+        ext_flag = False
         ext_y, ext_x = (units == 88).nonzero()
-        if(len(gas_y)==len(ext_y)):
-            gas_flag = False
+        if len(ext_y) != 0:
+            ext_flag = true
 
         supply_Available = player_info[_SUPPLY_CAP] - player_info[_SUPPLY_USED]
 
@@ -138,13 +150,13 @@ class Action_Space:
             actions.append(0)
 
         #geyser check
-        if(player_info[_PLAYER_MINERALS]>=25 and drone_flag and gas_flag):
+        if(player_info[_PLAYER_MINERALS]>=25 and drone_flag and ext_flag and gas_flag):
             actions.append(1)
         else:
             actions.append(0)
 
         #drone conditions
-        if(player_info[_PLAYER_MINERALS]>=50 and larva_Available > 0):
+        if(player_info[_PLAYER_MINERALS]>=50 and larva_Available > 0 and supply_Available > 0):
             actions.append(1)
         else:
             actions.append(0)
@@ -156,7 +168,7 @@ class Action_Space:
             actions.append(0)
 
         #queen conditions
-        if(player_info[_PLAYER_MINERALS]>=200 and hatch_flag):
+        if(player_info[_PLAYER_MINERALS]>=200 and hatch_flag and supply_Available > 1):
             actions.append(1)
         else:
             actions.append(0)
@@ -191,23 +203,10 @@ class Action_Space:
     #takes an integer action index  (corresponding to the i_th action in the action space) and returns 1 if the action is available and can be added to the queue, -1 if not.
     def act(self, index, obs, drone_id):
         avalable = self.check_available_actions(obs)
-        action_Dict = {
-            0 : self.build_Hatchery,
-            1 : self.build_Gas_Gyser,
-            2 : self.train_Drone,
-            3 : self.train_Overlord,
-            4 : self.train_Queen,
-            5 : self.inject_Larva,
-            6 : self.move_Screen1,
-            7 : self.move_Screen2,
-            8 : self.move_Screen3,
-            9 : self.move_Screen4,
-            10 : self.harvest_Minerals,
-            11 : self.harvest_Gas
-        }
-
+        
+        print("Action: ", index)
         if(avalable[index] == 1):
-            action_Dict[index](obs, drone_id)
+            self.action_Dict[index](obs, drone_id)
             return 1, self.actionq
         else:
             return -1, self.actionq
@@ -220,12 +219,13 @@ class Action_Space:
 
         if ((action == "Select_Point_screen")
            | (action == "Effect_InjectLarva_screen")
-           | (action == "Harvest_Gather_screen")
+           | (action == "Smart_Click")
            | (action == "Build_Hatchery_screen")
            | (action == "Build_Extractor_screen")
            | (action == "Build_SpawningPool_screen")
            | (action == "move_camera")):
             target = self.pointq.popleft()
+            # print("Action step target: ", target)
         else:
             target = [0,0]
 
@@ -234,7 +234,8 @@ class Action_Space:
             "Build_Hatchery_screen" : actions.FunctionCall(_BUILD_HATCHERY, [_NOT_QUEUED, target]),
             "Build_SpawningPool_screen" : actions.FunctionCall(_BUILD_POOL, [_NOT_QUEUED, target]),
             "Effect_InjectLarva_screen" : actions.FunctionCall(_INJECT_LARVA, [_NOT_QUEUED, target]),
-            "Harvest_Gather_screen" : actions.FunctionCall(_GATHER_RESOURCES, [_NOT_QUEUED, target]),
+            "Smart_Click" : actions.FunctionCall(_SMART, [_NOT_QUEUED, target]),
+            "select_larva" : actions.FunctionCall(_SELECT_LARVA, []),
             "Train_Drone_quick" : actions.FunctionCall(_TRAIN_DRONE, [_NOT_QUEUED]),
             "Train_Overlord_quick" : actions.FunctionCall(_TRAIN_OVERLORD, [_NOT_QUEUED]),
             "Train_Queen_quick" : actions.FunctionCall(_TRAIN_QUEEN, [_NOT_QUEUED]),     
@@ -248,6 +249,8 @@ class Action_Space:
         #first select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _DRONE).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x[0], unit_y[0]]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
@@ -286,6 +289,8 @@ class Action_Space:
         #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _DRONE).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x[0], unit_y[0]]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
@@ -298,6 +303,8 @@ class Action_Space:
         target2 = [unit_x[int(half):].mean(), unit_y[int(half):].mean()]
         #find built geysers
         unit_y, unit_x = (units == 88).nonzero()
+        if len(unit_x) == 0:
+            return
         if(target1 == [unit_x.mean(), unit_y.mean()]):
             self.pointq.append(target2)
         else:
@@ -307,8 +314,15 @@ class Action_Space:
     def build_Spawning_Pool(self, obs, drone_id):
         #step on is selecting a dron to build with
         units = obs.observation["screen"][_UNIT_TYPE]
+        pool = GetUnits(89, obs.raw_obs.raw_data.units) # ZERG_SPAWNINGPOOL
+        if len(pool) != 0 and pool[0].build_progress == 1.0:
+            self.pool_flag = True
+            return True
+        
         unit_y, unit_x = (units == _DRONE).nonzero()
         #grab the first drone for now
+        if len(unit_x) == 0:
+            return False
         target = [unit_x[0], unit_y[0]]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
@@ -316,17 +330,21 @@ class Action_Space:
         #then build the pool
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _HATCHERY).nonzero()
+        if len(unit_x) == 0:
+            return False
         #location is just left of the nearest hatchery
         target = [unit_x.mean()-12, unit_y.mean()]
         self.pointq.append(target)
         self.actionq.append("Build_SpawningPool_screen")
-        self.pool_flag = True
+        return False
     
     #TODO integrate drone ID tags
     def harvest_Minerals(self, obs, drone_id):
         #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _DRONE).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x[0], unit_y[0]]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
@@ -334,15 +352,20 @@ class Action_Space:
         #find a mineral patch and que clicking it
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == 341).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x[0], unit_y[0]]
         self.pointq.append(target)
-        self.actionq.append("Harvest_Gather_screen")
+        self.actionq.append("Smart_Click")
+
 
     #TODO integrate drone ID tags
     def harvest_Gas(self, obs, drone_id):
         #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _DRONE).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x[0], unit_y[0]]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
@@ -350,14 +373,18 @@ class Action_Space:
         #find an extractor and que clicking it
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == 88).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x.mean(), unit_y.mean()]
-        self.pointq.append(target)
-        self.actionq.append("Harvest_Gather_screen")
+        self.pointq.append(target)        
+        self.actionq.append("Smart_Click")
 
     def inject_Larva(self, obs, queen_id):
         #select a queen
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _QUEEN).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x[0], unit_y[0]]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
@@ -365,6 +392,8 @@ class Action_Space:
         #find a hatchery and inject it
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _HATCHERY).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x.mean(), unit_y.mean()]
         self.pointq.append(target)
         self.actionq.append("Effect_InjectLarva_screen")
@@ -405,20 +434,27 @@ class Action_Space:
         #find larva position
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _LARVA).nonzero()
-        if unit_x.size < 1:
+        if len(unit_x) == 0:
             return
-        target = [unit_x[0], unit_y[0]]
+        # target = [unit_x[0], unit_y[0]]
 
         #que clicking a larva and morphing it to a drone
+        # self.pointq.append(target)
+        # self.actionq.append("Select_Point_screen")
+        unit_y, unit_x = (units == _HATCHERY).nonzero()
+        if len(unit_x) == 0:
+            return
+        target = [unit_x.mean(), unit_y.mean()]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")
-        self.actionq.append("Train_Drone_quick")
+        self.actionq.append("select_larva")
+        self.actionq.append("Train_Drone_quick")        
                 
     def train_Overlord(self, obs, drone_id):
         #find larva position
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _LARVA).nonzero()
-        if unit_x.size < 1:
+        if len(unit_x) == 0:
             return
         target = [unit_x[0], unit_y[0]]
 
@@ -429,13 +465,15 @@ class Action_Space:
 
     def train_Queen(self, obs, hatch_id):
         #if no pool is built redirect to building it instead
-        if self.pool_flag == False:
-            self.build_Spawning_Pool(obs, 0)
-            return
+        if not self.pool_flag:
+            if not self.build_Spawning_Pool(obs, 0):
+                return
 
         #select a hatchery
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _HATCHERY).nonzero()
+        if len(unit_x) == 0:
+            return
         target = [unit_x.mean(), unit_y.mean()]
         self.pointq.append(target)
         self.actionq.append("Select_Point_screen")

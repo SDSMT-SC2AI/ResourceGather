@@ -1,13 +1,12 @@
-from Action_Space import Action_Space
 import numpy as np
 from common.helper_functions import GetUnits, InDistSqRange
 from pysc2.env import environment
 observation_size = 0
 
 
-def process_observation(env_obs, flags=None):
+def process_observation(env_obs, action_space, flags=None):
     reward = env_obs[0].raw_obs.score.score
-    available_actions = np.array(Action_Space.check_available_actions(env_obs[0].observation['available_actions'], env_obs[0]))
+    available_actions = np.array(action_space.check_available_actions(env_obs[0]))
     minerals = np.array([min(env_obs[0].raw_obs.player_common.minerals, flags.max_mineral_cost) / flags.max_mineral_cost])
     food_available = np.array([env_obs[0].raw_obs.player_common.food_cap - env_obs[0].raw_obs.player_common.food_used])
     bases = GetUnits(86, env_obs[0].raw_obs.raw_data.units)
