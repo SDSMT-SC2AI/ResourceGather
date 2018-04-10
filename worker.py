@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+from pysc2.lib import actions as pysc2_actions
+
 mse = tf.losses.mean_squared_error
 
 
@@ -49,10 +51,19 @@ class Worker:
             var_norms
 
     def do_actions(self, choice, env_obs):
-        feed_back, queue = self.actions.act(choice, env_obs[0], 0)
-        while queue:
+        feed_back = self.actions.act(7, env_obs[0], 0)
+
+        while True:
             action = self.actions.action_step()
-            env_obs = self.env.step(actions=[action])
+            if action[0] in env_obs[0].observation["available_actions"] :
+                act_call = pysc2_actions.FunctionCall(*action)
+            else:
+                act_call = pysc2_actions.FunctionCall(pysc2_actions.FUNCTIONS.no_op.id, [])
+                feedback = -1
+            env_obs = self.env.step(actions=[act_call])
+            if not self.actions.actionq:
+                break
+
         return feed_back, env_obs
 
     def work(self, max_episode_length, sess, coord, saver):

@@ -15,6 +15,7 @@ from pysc2.lib import actions
 from pysc2.maps import ladder
 from pysc2.lib import features
 from pysc2.lib import point
+from enum import Enum
 
 from common.helper_functions import GetUnits
 
@@ -38,6 +39,7 @@ _TRAIN_QUEEN = actions.FUNCTIONS.Train_Queen_quick.id
 _TRAIN_OVERLORD = actions.FUNCTIONS.Train_Overlord_quick.id
 _MOVE_CAMERA = actions.FUNCTIONS.move_camera.id
 _SMART = actions.FUNCTIONS.Smart_screen.id
+_MULTI_SELECT = actions.FUNCTIONS.select_rect.id
 _MAX_AVAIL_ACTIONS = 8
 
 
@@ -66,15 +68,30 @@ _BOTTOM_FOURTH_SCREEN = [30, 30]
 
 
 # Bottom right points
-_TOP_START = [12, 13]
+_TOP_START = [10, 17]
 _TOP_SECOND = [22, 18]
-_TOP_SECOND_SCREEN = [44, 42]
+_TOP_SECOND_SCREEN = [43, 43]
 _TOP_THIRD = [13, 26]
-_TOP_THIRD_SCREEN = [40, 43]
+_TOP_THIRD_SCREEN = [43, 42]
 _TOP_FOURTH = [22, 26]
-_TOP_FOURTH_SCREEN = [37, 42]
+_TOP_FOURTH_SCREEN = [43, 37]
 
+# Top Geyser
+_TOP_GEYSER = [64,16]
+# 2nd Top Geyser
+_TOP_2ND_GEYSER = [24,48]
 
+class ActionEnum():
+    """Enumerator for alliance"""
+    build_Hatchery = 0
+    build_Gas_Gyser = 1
+    train_Drone = 2
+    train_Overlord = 3
+    train_Queen = 4
+    inject_Larva = 5
+    harvest_Minerals = 6
+    harvest_Gas = 7
+    no_op = 8
 
 class Action_Space:
     # define the units and their actions
@@ -94,14 +111,15 @@ class Action_Space:
         self.pointq = deque([])
         self.expo_count = 0
         self.action_Dict = {
-            0 : self.build_Hatchery,
-            1 : self.build_Gas_Gyser,
-            2 : self.train_Drone,
-            3 : self.train_Overlord,
-            4 : self.train_Queen,
-            5 : self.inject_Larva,
-            6 : self.harvest_Minerals,
-            7 : self.harvest_Gas
+            ActionEnum.build_Hatchery   : self.build_Hatchery,
+            ActionEnum.build_Gas_Gyser  : self.build_Gas_Gyser,
+            ActionEnum.train_Drone      : self.train_Drone,
+            ActionEnum.train_Overlord   : self.train_Overlord,
+            ActionEnum.train_Queen      : self.train_Queen,
+            ActionEnum.inject_Larva     : self.inject_Larva,
+            ActionEnum.harvest_Minerals : self.harvest_Minerals,
+            ActionEnum.harvest_Gas      : self.harvest_Gas,
+            ActionEnum.no_op            : lambda a, b, c=None: self.actionq.append("No_Op")
         }
 
         #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas
@@ -121,82 +139,59 @@ class Action_Space:
         #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas        
         player_info = obs.observation["player"]
         units = obs.observation["screen"][_UNIT_TYPE]
-        actions = []
+        actions = [0]*len(self.action_Dict)
 
         larva_Available = len(GetUnits(_LARVA, obs.raw_obs.raw_data.units))# - self.actionq.count("Train_Drone_quick") - self.actionq.count("Train_Overlord_quick")
         #TODO get queen and gas info from feture layers
         queen_flag = False
+        hatcheries = GetUnits(_HATCHERY, obs.raw_obs.raw_data.units)
         if len(GetUnits(_QUEEN, obs.raw_obs.raw_data.units)) != 0:
             queen_flag = True
         drone_flag = False
         if len(GetUnits(_DRONE, obs.raw_obs.raw_data.units)) != 0:
             drone_flag = True
         hatch_flag = False
-        if len(GetUnits(_HATCHERY, obs.raw_obs.raw_data.units)) != 0:
+        if len(hatcheries) != 0:
             hatch_flag = True
          
         gas_flag = True
         ext_flag = False
         ext_y, ext_x = (units == 88).nonzero()
         if len(ext_y) != 0:
-            ext_flag = true
+            ext_flag = True
 
         supply_Available = player_info[_SUPPLY_CAP] - player_info[_SUPPLY_USED]
 
         #hatch check
         if(player_info[_PLAYER_MINERALS]>=300 and drone_flag and self.expo_count < 3):
-            actions.append(1)
-        else:
-            actions.append(0)
+            actions[ActionEnum.build_Hatchery] = 1
 
         #geyser check
         if(player_info[_PLAYER_MINERALS]>=25 and drone_flag and ext_flag and gas_flag):
-            actions.append(1)
-        else:
-            actions.append(0)
+            actions[ActionEnum.build_Gas_Gyser] = 1
 
         #drone conditions
         if(player_info[_PLAYER_MINERALS]>=50 and larva_Available > 0 and supply_Available > 0):
-            actions.append(1)
-        else:
-            actions.append(0)
+            actions[ActionEnum.train_Drone] = 1
 
         #overlord conditions
         if(player_info[_PLAYER_MINERALS]>=100 and larva_Available > 0):
-            actions.append(1)
-        else:
-            actions.append(0)
+            actions[ActionEnum.train_Overlord] = 1
 
         #queen conditions
         if(player_info[_PLAYER_MINERALS]>=200 and hatch_flag and supply_Available > 1):
-            actions.append(1)
-        else:
-            actions.append(0)
+            actions[ActionEnum.train_Queen] = 1
 
         #inject check
         if(queen_flag):
-            actions.append(1)
-        else:
-            actions.append(0)
-
-        #Move screens should always be true
-        actions.append(1)
-        actions.append(1)
-        actions.append(1)
-        actions.append(1)
+            actions[ActionEnum.inject_Larva] = 1
 
         #min check
         if(drone_flag):
-            actions.append(1)
-        else:
-            actions.append(0)
+            actions[ActionEnum.harvest_Minerals] = 1
+            actions[ActionEnum.harvest_Gas] = 1
 
-        #gas check
-        if(drone_flag):
-            actions.append(1)
-        else:
-            actions.append(0)
-
+        actions[ActionEnum.no_op] = 1
 
         return actions
 
@@ -207,15 +202,19 @@ class Action_Space:
         print("Action: ", index)
         if(avalable[index] == 1):
             self.action_Dict[index](obs, drone_id)
-            return 1, self.actionq
+            return 1
         else:
-            return -1, self.actionq
+            return -1
 
     def action_step(self):
         if self.actionq:
             action = self.actionq.popleft()
         else:
             action = "No_Op"
+
+        target = [0,0]
+        lhs = [0,0]
+        rhs = [0,0]
 
         if ((action == "Select_Point_screen")
            | (action == "Effect_InjectLarva_screen")
@@ -226,23 +225,25 @@ class Action_Space:
            | (action == "move_camera")):
             target = self.pointq.popleft()
             # print("Action step target: ", target)
-        else:
-            target = [0,0]
+        elif action == "multi_select":
+            lhs = self.pointq.popleft()
+            rhs = self.pointq.popleft()
 
         return {
-            "Build_Extractor_screen" : actions.FunctionCall(_BUILD_GAS, [_NOT_QUEUED, target]),
-            "Build_Hatchery_screen" : actions.FunctionCall(_BUILD_HATCHERY, [_NOT_QUEUED, target]),
-            "Build_SpawningPool_screen" : actions.FunctionCall(_BUILD_POOL, [_NOT_QUEUED, target]),
-            "Effect_InjectLarva_screen" : actions.FunctionCall(_INJECT_LARVA, [_NOT_QUEUED, target]),
-            "Smart_Click" : actions.FunctionCall(_SMART, [_NOT_QUEUED, target]),
-            "select_larva" : actions.FunctionCall(_SELECT_LARVA, []),
-            "Train_Drone_quick" : actions.FunctionCall(_TRAIN_DRONE, [_NOT_QUEUED]),
-            "Train_Overlord_quick" : actions.FunctionCall(_TRAIN_OVERLORD, [_NOT_QUEUED]),
-            "Train_Queen_quick" : actions.FunctionCall(_TRAIN_QUEEN, [_NOT_QUEUED]),     
-            "Select_Point_screen" : actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target]),
-            "move_camera" : actions.FunctionCall( _MOVE_CAMERA , [target]),
-            "No_Op" : actions.FunctionCall(actions.FUNCTIONS.no_op.id, [])
-            }[action]
+            "Build_Extractor_screen" : lambda target, lhs, rhs: (_BUILD_GAS, [_NOT_QUEUED, target]),
+            "Build_Hatchery_screen" : lambda target, lhs, rhs: (_BUILD_HATCHERY, [_NOT_QUEUED, target]),
+            "Build_SpawningPool_screen" : lambda target, lhs, rhs: (_BUILD_POOL, [_NOT_QUEUED, target]),
+            "Effect_InjectLarva_screen" : lambda target, lhs, rhs: (_INJECT_LARVA, [_NOT_QUEUED, target]),
+            "Smart_Click" : lambda target, lhs, rhs: (_SMART, [_NOT_QUEUED, target]),
+            "select_larva" : lambda target, lhs, rhs: (_SELECT_LARVA, []),
+            "Train_Drone_quick" : lambda target, lhs, rhs: (_TRAIN_DRONE, [_NOT_QUEUED]),
+            "Train_Overlord_quick" : lambda target, lhs, rhs: (_TRAIN_OVERLORD, [_NOT_QUEUED]),
+            "Train_Queen_quick" : lambda target, lhs, rhs: (_TRAIN_QUEEN, [_NOT_QUEUED]),     
+            "Select_Point_screen" : lambda target, lhs, rhs: (_SELECT_POINT, [_NOT_QUEUED, target]),
+            "multi_select" : lambda target, lhs, rhs: (_MULTI_SELECT, [_NOT_QUEUED, lhs, rhs]),
+            "move_camera" : lambda target, lhs, rhs: ( _MOVE_CAMERA , [target]),
+            "No_Op" : lambda target, lhs, rhs: (actions.FUNCTIONS.no_op.id, [])
+            }[action](target, lhs, rhs)
 
     # Action space functions
     def build_Hatchery(self, obs, drone_id):
@@ -251,9 +252,15 @@ class Action_Space:
         unit_y, unit_x = (units == _DRONE).nonzero()
         if len(unit_x) == 0:
             return
-        target = [unit_x[0], unit_y[0]]
-        self.pointq.append(target)
-        self.actionq.append("Select_Point_screen")
+
+        lhs_corner = [unit_x[0], unit_y[0]]
+        rhs_corner = [unit_x[0] + 1, unit_y[0] + 1]
+        self.pointq.append(lhs_corner)
+        self.pointq.append(rhs_corner)
+        self.actionq.append("multi_select")
+        # target = [unit_x[0], unit_y[0]]
+        # self.pointq.append(target)
+        # self.actionq.append("Select_Point_screen")
         #get the coords for the next base and build there
         if self.top_left:
             map_target = {
@@ -277,11 +284,19 @@ class Action_Space:
                 1 : _BOTTOM_THIRD_SCREEN,
                 2 : _BOTTOM_FOURTH_SCREEN
                 }[self.expo_count]
-        self.expo_count += 1;
+        
         self.pointq.append(map_target)
         self.actionq.append("move_camera")
+        # for _ in range(15):
+            # self.actionq.append("No_Op")
+        
+
         self.pointq.append(screen_target)
         self.actionq.append("Build_Hatchery_screen")
+        # for _ in range(3000):
+            # self.actionq.append("No_Op")
+        self.pointq.append(_TOP_START)
+        self.actionq.append("move_camera")
         self.expo_count += 1
 
     # Builds a geyser if one is taken it builds the other
@@ -345,9 +360,16 @@ class Action_Space:
         unit_y, unit_x = (units == _DRONE).nonzero()
         if len(unit_x) == 0:
             return
-        target = [unit_x[0], unit_y[0]]
-        self.pointq.append(target)
-        self.actionq.append("Select_Point_screen")
+
+        lhs_corner = [unit_x[0], unit_y[0]]
+        rhs_corner = [unit_x[0] + 1, unit_y[0] + 1]
+        self.pointq.append(lhs_corner)
+        self.pointq.append(rhs_corner)
+        self.actionq.append("multi_select")
+
+        # target = [unit_x[0], unit_y[0]]
+        # self.pointq.append(target)
+        # self.actionq.append("Select_Point_screen")
 
         #find a mineral patch and que clicking it
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -366,18 +388,30 @@ class Action_Space:
         unit_y, unit_x = (units == _DRONE).nonzero()
         if len(unit_x) == 0:
             return
-        target = [unit_x[0], unit_y[0]]
-        self.pointq.append(target)
-        self.actionq.append("Select_Point_screen")
+
+        # Centering ourselves
+        self.pointq.append(_TOP_START)
+        self.actionq.append("move_camera")
+
+        # Select rectangle that encompases a drone
+        lhs_corner = [unit_x[0], unit_y[0]]
+        rhs_corner = [unit_x[0] + 1, unit_y[0] + 1]
+        self.pointq.append(lhs_corner)
+        self.pointq.append(rhs_corner)
+        self.actionq.append("multi_select")
+
+        # select geyser point
+        self.pointq.append(_TOP_GEYSER)
+        self.actionq.append("Build_Extractor_screen")
 
         #find an extractor and que clicking it
-        units = obs.observation["screen"][_UNIT_TYPE]
-        unit_y, unit_x = (units == 88).nonzero()
-        if len(unit_x) == 0:
-            return
-        target = [unit_x.mean(), unit_y.mean()]
-        self.pointq.append(target)        
-        self.actionq.append("Smart_Click")
+        # units = obs.observation["screen"][_UNIT_TYPE]
+        # unit_y, unit_x = (units == 88).nonzero()
+        # if len(unit_x) == 0:
+        #     return
+        # target = [unit_x.mean(), unit_y.mean()]
+        # self.pointq.append(target)        
+        # self.actionq.append("Smart_Click")
 
     def inject_Larva(self, obs, queen_id):
         #select a queen

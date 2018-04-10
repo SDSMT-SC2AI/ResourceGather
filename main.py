@@ -66,13 +66,13 @@ def main():
     agent_cls = agent.Smart
 
     agent.policy_spec.update(      
-            input_size=20,
+            input_size=17,
             num_actions=len(Action_Space().action_Dict),
             max_episodes=2500,
             q_range=(30, 31),
             hidden_layer_size=30,
-            base_explore_rate=0.1,                 
-            min_explore_rate=0.01
+            base_explore_rate=0.3,                 
+            min_explore_rate=0.3
         )
     maps.get(flags.map)
 

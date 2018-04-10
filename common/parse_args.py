@@ -44,7 +44,7 @@ def parse_args():
                         help="Game steps per episode")
 
     parser.add_argument("--step_mul",
-                        default=1, type=int,
+                        default=2, type=int,
                         help="Game steps per agent step")
 
     parser.add_argument("--agent",
