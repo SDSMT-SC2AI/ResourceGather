@@ -33,7 +33,7 @@ def __main__():
     with tf.device("/cpu:0"):
         global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
         optimizer = tf.train.AdamOptimizer(learning_rate=0.005)
-        agent.policy_spec.update(actions.action_spec)
+        agent.policy_spec.update(actions.ActionSpace.action_spec)
         master_network = network.Policy('global', global_episodes, agent.policy_spec)
         num_workers = psutil.cpu_count()
         # num_workers = 2
@@ -52,9 +52,9 @@ def __main__():
         workers = []
         # Initialize workers
         for i in range(num_workers):
-            env = SimpleEnv(mode="Accumulating")
+            env = SimpleEnv(mode="Basic")
             workers.append(
-                Worker(i, sys.modules[__name__], env, actions, agent.Simple,
+                Worker(i, sys.modules[__name__], env, actions.ActionSpace(), agent.Simple,
                        optimizer, model_path, global_episodes,
                        buffer_min=10, buffer_max=30))
         saver = tf.train.Saver(max_to_keep=5)

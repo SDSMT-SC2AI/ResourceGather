@@ -84,7 +84,7 @@ class Action_Space:
     pool_flag = False
     top_left = True
     action_spec = {
-    'number of actions': _MAX_AVAIL_ACTIONS # Actions should be in a dict or something so we can run len() etc. on them
+    'num_actions': _MAX_AVAIL_ACTIONS # Actions should be in a dict or something so we can run len() etc. on them
     }
 
     def __init__(self):

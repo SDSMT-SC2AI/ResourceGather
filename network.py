@@ -1,6 +1,5 @@
 import tensorflow as tf
-import numpy as np
-from common.helper_functions import bisection, discount, select_from
+from common.helper_functions import discount, select_from
 
 
 class Trainer:
@@ -35,7 +34,7 @@ class Trainer:
 
             self.accuracy_loss = tf.reduce_mean(tf.square(q - discounted_rewards)) * (1 - gamma + 0.000001)
             self.consistent_loss = tf.reduce_mean(tf.square(q - self.values[1:]))
-            self.advantage = tf.reduce_mean(q - self.values[:-1])
+            self.advantage = tf.reduce_mean((q - self.values[:-1]))
             self.loss = a_c * self.accuracy_loss + c_c * self.consistent_loss - adv_c * self.advantage
 
             # Get gradients from local network using local losses
@@ -117,10 +116,10 @@ class Policy:
                 biases_initializer=tf.random_uniform_initializer(*policy_spec['q_range'])
             )
 
-            best = tf.argmax(self.q, axis=-1)
+            self.best = tf.argmax(self.q, axis=-1)
             p_best = 1 - self.exploration
             p_other = self.exploration / tf.cast(tf.shape(self.q)[-1], dtype=tf.float32)
-            self.probs = tf.one_hot(best, tf.shape(self.q)[-1], dtype=tf.float32) * p_best + p_other
+            self.probs = tf.one_hot(self.best, tf.shape(self.q)[-1], dtype=tf.float32) * p_best + p_other
 
             self.action = tf.reshape(tf.multinomial(tf.log(self.probs), 1), [-1])
             self.value = tf.reduce_sum(self.probs * self.q, axis=1) / tf.reduce_sum(self.probs, axis=1)

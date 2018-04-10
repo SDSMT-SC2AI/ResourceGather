@@ -49,10 +49,14 @@ class Worker:
             var_norms
 
     def do_actions(self, choice, env_obs):
-        feed_back, queue = self.actions.act(choice, env_obs[0], 0)
-        while queue:
+        feed_back, _ = self.actions.act(choice, env_obs[0], 0)
+        if not self.actions.actionq:
             action = self.actions.action_step()
             env_obs = self.env.step(actions=[action])
+        while self.actions.actionq:
+            action = self.actions.action_step()
+            env_obs = self.env.step(actions=[action])
+
         return feed_back, env_obs
 
     def work(self, max_episode_length, sess, coord, saver):
