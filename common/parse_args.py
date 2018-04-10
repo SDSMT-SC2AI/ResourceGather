@@ -24,7 +24,7 @@ def parse_args():
                         help="To train or not to train")
 
     parser.add_argument("--render",
-                        default=False, type=bool,
+                        default=True, type=bool,
                         help="Render feature layers with pygame")
 
     parser.add_argument("--episodes",
@@ -44,7 +44,7 @@ def parse_args():
                         help="Game steps per episode")
 
     parser.add_argument("--step_mul",
-                        default=1, type=int,
+                        default=2, type=int,
                         help="Game steps per agent step")
 
     parser.add_argument("--agent",

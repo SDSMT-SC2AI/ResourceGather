@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+from pysc2.lib import actions as pysc2_actions
+
 mse = tf.losses.mean_squared_error
 
 
@@ -49,13 +51,18 @@ class Worker:
             var_norms
 
     def do_actions(self, choice, env_obs):
-        feed_back, _ = self.actions.act(choice, env_obs[0], 0)
-        if not self.actions.actionq:
+        feed_back = self.actions.act(7, env_obs[0], 0)
+
+        while True:
             action = self.actions.action_step()
-            env_obs = self.env.step(actions=[action])
-        while self.actions.actionq:
-            action = self.actions.action_step()
-            env_obs = self.env.step(actions=[action])
+            if action[0] in env_obs[0].observation["available_actions"] :
+                act_call = pysc2_actions.FunctionCall(*action)
+            else:
+                act_call = pysc2_actions.FunctionCall(pysc2_actions.FUNCTIONS.no_op.id, [])
+                feedback = -1
+            env_obs = self.env.step(actions=[act_call])
+            if not self.actions.actionq:
+                break
 
         return feed_back, env_obs
 
@@ -76,12 +83,12 @@ class Worker:
 
                 # Start new episode
                 env_obs = self.env.reset() # There is only one agent running, so [0]
-                reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
+                reward, obs, episode_end = self.agent.process_observation(env_obs, self.actions, self.flags)
 
                 while not episode_end:
                     choice, value = self.agent.step(sess, obs) 
                     feedback, env_obs = self.do_actions(choice, env_obs)
-                    reward, obs, episode_end = self.agent.process_observation(env_obs, self.flags)
+                    reward, obs, episode_end = self.agent.process_observation(env_obs, self.actions, self.flags)
 
                     for i, v in enumerate([choice, reward + feedback, obs, value]):
                         episode_buffer[i].append(v)

@@ -5,7 +5,7 @@ hidden_layer_size = (3*observer.observation_size)//2
 
 policy_spec = network.Policy.policy_spec(
             input_size=20,
-            num_actions=12,
+            num_actions=800,
             max_episodes=2500,
             q_range=(30, 31),
             hidden_layer_size=30,
@@ -20,5 +20,5 @@ class Smart(BaseAgent):
         super().__init__(name, parent, optimizer, network, episode, policy_spec, trainer_spec)
 
     @staticmethod
-    def process_observation(obs, flags=None):
-        return observer.process_observation(obs, flags)
+    def process_observation(obs, action_space, flags=None):
+        return observer.process_observation(obs, action_space, flags)
