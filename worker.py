@@ -5,12 +5,13 @@ mse = tf.losses.mean_squared_error
 
 
 class Worker:
-    def __init__(self, name, main, env, actions, agent_cls, optimizer, model_path, global_episodes,
-                 buffer_min=10, buffer_max=30, flags=None):
+    def __init__(self, name, number,
+                 main, env, actions, agent,
+                 model_path, global_episodes,
+                 buffer_min=10, buffer_max=30):
         self.name = "worker_" + str(name)
-        self.number = name
+        self.number = number
         self.model_path = model_path
-        self.optimizer = optimizer
         self.buffer_min = buffer_min
         self.buffer_max = buffer_max
         self.global_episodes = global_episodes
@@ -19,11 +20,10 @@ class Worker:
         self.episode_lengths = []
         self.episode_mean_values = []
         self.summary_writer = tf.summary.FileWriter("train_" + str(self.number))
-        self.flags = flags
         self.main = main
 
         # Create the local copy of the agent which inherits the global network parameters
-        self.agent = agent_cls(self.name, 'global', optimizer, self.global_episodes, actions.action_spec)
+        self.agent = agent
         self.actions = actions
 
         print('Initializing environment #{}...'.format(self.number))
@@ -50,7 +50,7 @@ class Worker:
             var_norms
 
     def do_actions(self, choice, env_obs):
-        feed_back = self.actions.act(choice, env_obs[0], 0)
+        feed_back = self.actions.act(choice, env_obs[0])
 
         while True:
             act_call, feed = self.actions.action_step(env_obs)
@@ -78,12 +78,12 @@ class Worker:
 
                 # Start new episode
                 env_obs = self.env.reset() # There is only one agent running, so [0]
-                reward, obs, episode_end = self.agent.process_observation(env_obs, self.actions, self.flags)
+                reward, obs, episode_end = self.agent.process_observation(env_obs)
 
                 while not episode_end:
                     choice, value = self.agent.step(sess, obs) 
                     feedback, env_obs = self.do_actions(choice, env_obs)
-                    reward, obs, episode_end = self.agent.process_observation(env_obs, self.actions, self.flags)
+                    reward, obs, episode_end = self.agent.process_observation(env_obs)
 
                     for i, v in enumerate([choice, reward + feedback, obs, value]):
                         episode_buffer[i].append(v)
@@ -102,7 +102,6 @@ class Worker:
                             self.train(episode_buffer, sess, bootstrap)
                         episode_buffer = [feed[-self.buffer_min:] for feed in episode_buffer]
 
-                
                 self.episode_rewards.append(episode_reward)
                 self.episode_lengths.append(episode_step_count)
                 self.episode_mean_values.append(np.mean(episode_values))

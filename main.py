@@ -97,6 +97,8 @@ def main():
         workers = []
         # Initialize workers
         for i in range(num_workers):
+            name = "worker_" + str(i)
+            agent_inst = agent_cls(name, 'global', optimizer, global_episodes, Action_Space(), flags)
             env = sc2_env.SC2Env(
                     map_name=flags.map,
                     agent_race=flags.agent_race,
@@ -106,20 +108,22 @@ def main():
                     game_steps_per_episode=flags.game_steps_per_episode,
                     screen_size_px=(flags.screen_resolution, flags.screen_resolution),
                     minimap_size_px=(flags.minimap_resolution, flags.minimap_resolution),
-                    visualize=flags.render)
-
-            workers.append(Worker(
-                name=i,
-                main=sys.modules[__name__],
-                env=env,
-                actions=Action_Space(),
-                agent_cls=agent_cls,
-                optimizer=optimizer,
-                model_path=model_path,
-                global_episodes=global_episodes,
-                flags=flags,
-                buffer_min=150,
-                buffer_max=300))
+                    visualize=flags.render
+            )
+            workers.append(
+                Worker(
+                    name=name,
+                    number=i,
+                    main=sys.modules[__name__],
+                    env=env,
+                    actions=Action_Space(),
+                    agent=agent_inst,
+                    model_path=model_path,
+                    global_episodes=global_episodes,
+                    buffer_min=150,
+                    buffer_max=300
+                )
+            )
         saver = tf.train.Saver(max_to_keep=5)
 
     with tf.Session(config=config) as sess:

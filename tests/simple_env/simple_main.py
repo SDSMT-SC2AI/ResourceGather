@@ -53,10 +53,21 @@ def __main__():
         # Initialize workers
         for i in range(num_workers):
             env = SimpleEnv(mode="Accumulating")
+            name = "worker_" + str(i)
+            agent_inst = agent.Simple(name, 'global', optimizer, global_episodes, actions.action_spec)
             workers.append(
-                Worker(i, sys.modules[__name__], env, actions, agent.Simple,
-                       optimizer, model_path, global_episodes,
-                       buffer_min=10, buffer_max=30))
+                Worker(
+                    name=name,
+                    number=i,
+                    main=sys.modules[__name__],
+                    env=env,
+                    actions=actions,
+                    agent=agent_inst,
+                    model_path=model_path,
+                    global_episodes=global_episodes,
+                    buffer_min=10, buffer_max=30
+                )
+            )
         saver = tf.train.Saver(max_to_keep=5)
 
     with tf.Session(config=config) as sess:

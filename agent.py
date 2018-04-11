@@ -15,10 +15,11 @@ trainer_spec = network.Trainer.trainer_spec()
 
 
 class Smart(BaseAgent):
-    def __init__(self, name, parent, optimizer, episode, action_spec):
-        policy_spec.update(action_spec)
+    def __init__(self, name, parent, optimizer, episode, action_space, flags):
+        policy_spec.update(action_space.action_spec)
         super().__init__(name, parent, optimizer, network, episode, policy_spec, trainer_spec)
+        self.action_space = action_space
+        self.flags = flags
 
-    @staticmethod
-    def process_observation(obs, action_space, flags=None):
-        return observer.process_observation(obs, action_space, flags)
+    def process_observation(self, obs):
+        return observer.process_observation(obs, self.action_space, self.flags)

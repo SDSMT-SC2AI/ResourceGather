@@ -20,6 +20,5 @@ class BaseAgent:
     def update_policy(self, sess):
         sess.run(self.update_local_policy)
 
-    @staticmethod
-    def process_observation(obs):
+    def process_observation(self, obs):
         raise NotImplementedError

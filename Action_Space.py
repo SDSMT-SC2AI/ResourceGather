@@ -214,7 +214,7 @@ class Action_Space:
 
     # takes an integer action index  (corresponding to the i_th action in the action space)
     # returns 1 if the action is available and can be added to the queue, -1 if not.
-    def act(self, index, obs, drone_id):
+    def act(self, index, obs, drone_id=None):
         index = 7
         avalable = self.check_available_actions(obs)
         
