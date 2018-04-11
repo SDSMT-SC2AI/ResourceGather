@@ -67,7 +67,7 @@ def main():
 
     agent.policy_spec.update(      
             input_size=17,
-            num_actions=len(Action_Space().action_Dict),
+            num_actions=len(Action_Space().action_dict),
             max_episodes=2500,
             q_range=(30, 31),
             hidden_layer_size=30,

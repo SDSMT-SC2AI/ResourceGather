@@ -110,7 +110,8 @@ class Action_Space:
         self.actionq = deque(["No_Op"]*10)
         self.pointq = deque([])
         self.expo_count = 0
-        self.action_Dict = {
+
+        self.action_dict = {
             ActionEnum.build_Hatchery   : self.build_Hatchery,
             ActionEnum.build_Gas_Gyser  : self.build_Gas_Gyser,
             ActionEnum.train_Drone      : self.train_Drone,
@@ -120,6 +121,22 @@ class Action_Space:
             ActionEnum.harvest_Minerals : self.harvest_Minerals,
             ActionEnum.harvest_Gas      : self.harvest_Gas,
             ActionEnum.no_op            : lambda a, b, c=None: self.actionq.append("No_Op")
+        }
+
+        self.action_map = {
+            "Build_Extractor_screen": lambda target, lhs, rhs: (_BUILD_GAS, [_NOT_QUEUED, target]),
+            "Build_Hatchery_screen": lambda target, lhs, rhs: (_BUILD_HATCHERY, [_NOT_QUEUED, target]),
+            "Build_SpawningPool_screen": lambda target, lhs, rhs: (_BUILD_POOL, [_NOT_QUEUED, target]),
+            "Effect_InjectLarva_screen": lambda target, lhs, rhs: (_INJECT_LARVA, [_NOT_QUEUED, target]),
+            "Smart_Click": lambda target, lhs, rhs: (_SMART, [_NOT_QUEUED, target]),
+            "select_larva": lambda target, lhs, rhs: (_SELECT_LARVA, []),
+            "Train_Drone_quick": lambda target, lhs, rhs: (_TRAIN_DRONE, [_NOT_QUEUED]),
+            "Train_Overlord_quick": lambda target, lhs, rhs: (_TRAIN_OVERLORD, [_NOT_QUEUED]),
+            "Train_Queen_quick": lambda target, lhs, rhs: (_TRAIN_QUEEN, [_NOT_QUEUED]),
+            "Select_Point_screen": lambda target, lhs, rhs: (_SELECT_POINT, [_NOT_QUEUED, target]),
+            "multi_select": lambda target, lhs, rhs: (_MULTI_SELECT, [_NOT_QUEUED, lhs, rhs]),
+            "move_camera": lambda target, lhs, rhs: (_MOVE_CAMERA, [target]),
+            "No_Op": lambda target, lhs, rhs: (actions.FUNCTIONS.no_op.id, [])
         }
 
         #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas
@@ -139,7 +156,7 @@ class Action_Space:
         #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas        
         player_info = obs.observation["player"]
         units = obs.observation["screen"][_UNIT_TYPE]
-        actions = [0]*len(self.action_Dict)
+        actions = [0]*len(self.action_dict)
 
         larva_Available = len(GetUnits(_LARVA, obs.raw_obs.raw_data.units))# - self.actionq.count("Train_Drone_quick") - self.actionq.count("Train_Overlord_quick")
         #TODO get queen and gas info from feture layers
@@ -195,26 +212,28 @@ class Action_Space:
 
         return actions
 
-    #takes an integer action index  (corresponding to the i_th action in the action space) and returns 1 if the action is available and can be added to the queue, -1 if not.
+    # takes an integer action index  (corresponding to the i_th action in the action space)
+    # returns 1 if the action is available and can be added to the queue, -1 if not.
     def act(self, index, obs, drone_id):
+        index = 7
         avalable = self.check_available_actions(obs)
         
         print("Action: ", index)
         if(avalable[index] == 1):
-            self.action_Dict[index](obs, drone_id)
+            self.action_dict[index](obs, drone_id)
             return 1
         else:
             return -1
 
-    def action_step(self):
+    def action_step(self, env_obs):
         if self.actionq:
             action = self.actionq.popleft()
         else:
             action = "No_Op"
 
-        target = [0,0]
-        lhs = [0,0]
-        rhs = [0,0]
+        target = [0, 0]
+        lhs = [0, 0]
+        rhs = [0, 0]
 
         if ((action == "Select_Point_screen")
            | (action == "Effect_InjectLarva_screen")
@@ -229,21 +248,13 @@ class Action_Space:
             lhs = self.pointq.popleft()
             rhs = self.pointq.popleft()
 
-        return {
-            "Build_Extractor_screen" : lambda target, lhs, rhs: (_BUILD_GAS, [_NOT_QUEUED, target]),
-            "Build_Hatchery_screen" : lambda target, lhs, rhs: (_BUILD_HATCHERY, [_NOT_QUEUED, target]),
-            "Build_SpawningPool_screen" : lambda target, lhs, rhs: (_BUILD_POOL, [_NOT_QUEUED, target]),
-            "Effect_InjectLarva_screen" : lambda target, lhs, rhs: (_INJECT_LARVA, [_NOT_QUEUED, target]),
-            "Smart_Click" : lambda target, lhs, rhs: (_SMART, [_NOT_QUEUED, target]),
-            "select_larva" : lambda target, lhs, rhs: (_SELECT_LARVA, []),
-            "Train_Drone_quick" : lambda target, lhs, rhs: (_TRAIN_DRONE, [_NOT_QUEUED]),
-            "Train_Overlord_quick" : lambda target, lhs, rhs: (_TRAIN_OVERLORD, [_NOT_QUEUED]),
-            "Train_Queen_quick" : lambda target, lhs, rhs: (_TRAIN_QUEEN, [_NOT_QUEUED]),     
-            "Select_Point_screen" : lambda target, lhs, rhs: (_SELECT_POINT, [_NOT_QUEUED, target]),
-            "multi_select" : lambda target, lhs, rhs: (_MULTI_SELECT, [_NOT_QUEUED, lhs, rhs]),
-            "move_camera" : lambda target, lhs, rhs: ( _MOVE_CAMERA , [target]),
-            "No_Op" : lambda target, lhs, rhs: (actions.FUNCTIONS.no_op.id, [])
-            }[action](target, lhs, rhs)
+        act_args = self.action_map[action](target, lhs, rhs)
+        if act_args[0] in env_obs[0].observation["available_actions"]:
+            act_call = actions.FunctionCall(*act_args)
+            return act_call, 0
+        else:
+            act_call = actions.FunctionCall(actions.FUNCTIONS.no_op.id, [])
+            return act_call, -1
 
     # Action space functions
     def build_Hatchery(self, obs, drone_id):
