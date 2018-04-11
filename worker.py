@@ -53,7 +53,7 @@ class Worker:
         feed_back = self.actions.act(choice, env_obs[0], 0)
 
         while True:
-            act_call, feed = self.actions.action_step()
+            act_call, feed = self.actions.action_step(env_obs)
             env_obs = self.env.step(actions=[act_call])
             feed_back += feed
             if not self.actions.actionq:
