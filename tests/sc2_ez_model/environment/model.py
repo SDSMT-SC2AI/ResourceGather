@@ -47,6 +47,7 @@ class IdealizedSC2Env:
         self.silent_errors = silent_errors
         self.verbose = verbose
         self.game_loops_per_agent_step = game_loops_per_agent_step
+        self.base_index = 0
         self.reset()
 
     def reset(self):
@@ -62,12 +63,13 @@ class IdealizedSC2Env:
         self.overlords = 1
         self.spawning_pool = False
         self.actions_in_progress = set()
-        self.minerals = 0
+        self.minerals = 50
         self.gas = 0
         self.resources_collected = 0
         self.resource_collection_rate = 0
         self.log = []
         self.reward = 0
+        self.base_index = 0
 
         # returns reward, observation, and game_end flag
         return [[self.reward, self, False], ]
@@ -149,7 +151,7 @@ class IdealizedSC2Env:
             used += base.minerals.drones + base.geyserA.drones + base.geyserB.drones
             used += 2*base.queens
 
-        supply = max(200, supply)
+        supply = min(200, supply)
         return used, supply
 
     @property

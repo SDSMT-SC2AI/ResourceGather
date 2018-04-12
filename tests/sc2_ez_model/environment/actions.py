@@ -53,8 +53,11 @@ class Build(Action):
     @classmethod
     def verify(cls, env):
         super().verify(env)
-        if env.minerals < cls.mineral_cost or env.gas < cls.gas_cost:
-            raise ActionError("Insufficient Resources")
+        if env.minerals < cls.mineral_cost:
+            raise ActionError("Insufficient Minerals", mineral_cost, env.minerals)
+
+        if env.gas < cls.gas_cost:
+            raise ActionError("Insufficient Vespene Gas", gas_cost, env.gas)
 
 
 class BuildDrone(Build):
@@ -71,10 +74,8 @@ class BuildDrone(Build):
 
     def on_complete(self):
         super().on_complete()
-        if self.base.rally_set:
-            self.base.minerals.drones += 1
-        else:
-            self.base.unassigned_drones += 1
+        self.base.unassigned_drones += 1
+        self.base.needs_attention = True
 
     @classmethod
     def verify(cls, env):

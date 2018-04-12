@@ -1,7 +1,7 @@
 class Base:
+    larva_gen_rate = 11 # Every 11 seconds
     def __init__(self, parent):
         self.parent = parent
-        self.rally_set = False
         self.needs_attention = True
         self.minerals = Minerals(parent)
         self.geyserA = Geyser(parent)
@@ -10,22 +10,64 @@ class Base:
         self.unassigned_drones = 0
         self.queens = 0
         self.queens_queued = 0
+        self.index = parent.base_index
 
     def get_drones(self):
         return self.minerals.drones, self.geyserA.drones, self.geyserB.drones
 
     def production(self):
-        return self.minerals.collect(), self.geyserA.collect() + self.geyserB.collect()
+        mins = self.minerals.collect()
+        gasA = self.geyserA.collect()
+        gasB = self.geyserB.collect()
+        if self.minerals.drones - self.mines.equiv_max > 1:
+            self.unassigned_drones += self.minerals.drones - int(self.minerals.equiv_max)
+            self.minerals.drones -= int(self.minerals.equiv_max)
+            self.assign_drones()
+        if self.geyserA.drones - self.geyserA.equiv_max > 1:
+            self.unassigned_drones += self.geyserA.drones - int(self.minerals.equiv_max)
+            self.geyserA.drones -= int(self.minerals.equiv_max)
+            self.assign_drones()
+        if self.geyserB.drones - self.geyserB.equiv_max > 1:
+            self.unassigned_drones += self.geyserB.drones - int(self.minerals.equiv_max)
+            self.geyserB.drones -= int(self.minerals.equiv_max)
+            self.assign_drones()
+
+        return mins, gasA + gasB
 
     def tick(self):
-        self.larva += self.parent.clock_rate / 11 if self.larva < 3 else 0
-        if self.unassigned_drones > 0 \
-                or (1.06 - (self.minerals.drones + .1) / (.1 + self.minerals.max_drones)) > 0.05\
-                or (1.06 - (self.geyserA.drones + .1) / (.1 + self.geyserA.max_drones)) > 0.05\
-                or (1.06 - (self.geyserB.drones + .1) / (.1 + self.geyserB.max_drones)) > 0.05:
-            self.needs_attention = True
-
+        self.larva += self.parent.clock_rate / self.larva_gen_rate if self.larva < 3 else 0
+        if self.unassigned_drones > 0:
+            self.assign_drones()
+            self.move_workers()
         return self.production()
+
+
+    def assign_drones(self):
+        for _ in range(self.unassigned_drones):
+            if self.minerals.drones < self.minerals.equiv_max:
+                self.rally_set = True
+                self.unassigned_drones -= 1
+                self.minerals.drones += 1
+            elif self.geyserA.has_extractor and self.geyserA.drones < self.geyserA.equiv_max:
+                self.unassigned_drones -= 1
+                self.geyserA.drones += 1
+            elif self.geyserB.has_extractor and self.geyserB.drones < self.geyserB.equiv_max:
+                self.unassigned_drones -= 1
+                self.geyserB.drones += 1
+            else:
+                # If this base is full on drones need to assign unassigned to another base
+                self.minerals.drones += 1
+                self.unassigned_drones -= 1 
+
+    # If we have another base to move drones to we push these unassigned_drones down the list, otherwise
+    # they sit unassigned until a new base is built
+    def move_workers(self):
+        next_base_idx = self.index + 1
+        if len(self.parent.bases) < next_base_idx:
+            self.parent.bases[next_base_idx].unassigned_drones += self.unassigned_drones
+            self.parent.bases[next_base_idx].assign_drones()
+            self.unassigned_drones = 0
+
 
     @property
     def resource_collection_rate(self):
