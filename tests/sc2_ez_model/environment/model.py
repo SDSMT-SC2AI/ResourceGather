@@ -1,5 +1,6 @@
 from objects import Base
 from actions import ActionError
+import actions as env_actions
 
 
 class IdealizedSC2Env:
@@ -15,6 +16,7 @@ class IdealizedSC2Env:
         self.bases = [Base(self)]
         self.bases[0].minerals.drones = 12
         self.focus = self.bases[0]
+        self.target = None
         self.clock_rate = 0.1
         self.overlords = 1
         self.spawning_pool = False
@@ -67,6 +69,27 @@ class IdealizedSC2Env:
 
     def observe(self):
         pass
+
+    # Returns the total supply and the supply used
+    def get_supply(self):
+        supply = 8 * self.overlords
+        used = 0
+        for base in self.bases:
+            supply += 15
+            used += base.unassigned_drones
+            used += base.minerals.drones + base.geyserA.drones + base.geyserB.drones
+            used += 2*base.queens
+
+        return used, supply
+
+    def get_available_actions(self):
+        available_actions = set()
+        used, supply = self.get_supply()
+        if used + 1 <= supply:
+            available_actions.add(env_actions.BuildDrone)
+
+
+
 
 
 
