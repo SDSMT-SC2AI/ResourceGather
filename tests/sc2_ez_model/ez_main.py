@@ -9,9 +9,9 @@ from time import sleep
 sys.path.insert(0, abspath(join(dirname(__file__), "../..")))
 import network
 from worker import Worker
-from tests.simple_env.simple_env import SimpleEnv
-import tests.simple_env.simple_agent as agent
-import tests.simple_env.simple_actions as actions
+from tests.sc2_ez_model.environment.model import IdealizedSC2Env
+import tests.sc2_ez_model.ez_agent as agent
+import tests.sc2_ez_model.ez_actions as actions
 
 global _max_score, _running_avg_score, _steps, _episodes
 # noinspection PyRedeclaration
@@ -19,7 +19,7 @@ _max_score = _running_avg_score = 0
 # noinspection PyRedeclaration
 _steps = _episodes = []
 
-
+"""
 def __main__():
     max_episode_length = 300
     load_model = False
@@ -75,7 +75,7 @@ def __main__():
             sleep(0.05)
             worker_threads.append(t)
         coord.join(worker_threads)
-
+"""
 
 if __name__ == "__main__":
     __main__()
