@@ -1,4 +1,4 @@
-from objects import Base, Resource, Geyser
+from .objects import Base, Resource, Geyser
 
 
 class ActionError(Exception):
@@ -17,9 +17,11 @@ class Action:
     def tick(self):
         self.time_remaining -= self.parent.clock_rate
         self.on_step()
-        if self.time_remaining == 0:
+        if self.time_remaining <= 0:
             self.on_complete()
             return True
+        else:
+            return False
 
     def on_start(self):
         pass
@@ -60,8 +62,8 @@ class BuildDrone(Build):
     mineral_cost = 50
 
     def __init__(self, parent):
+        self.base = parent.focus
         super().__init__(parent)
-        self.base = self.parent.focus
 
     def on_start(self):
         super().on_start()
@@ -77,14 +79,14 @@ class BuildDrone(Build):
     @classmethod
     def verify(cls, env):
         super().verify(env)
-        used, supply = env.get_supply()
+        used, supply = env.supply
         if used + 1 > supply:
             raise ActionError("Insufficient Supply", used, supply)
 
         if not isinstance(env.focus, Base):
             raise ActionError("Base Not Selected", type(env.focus))
 
-        if env.focus.larva <= 0:
+        if env.focus.larva < 1:
             raise ActionError("Not Enough Larva", env.focus.larva)
 
 
@@ -123,8 +125,8 @@ class BuildQueen(Build):
     mineral_cost = 150
 
     def __init__(self, parent):
+        self.base = parent.focus
         super().__init__(parent)
-        self.base = self.parent.focus
 
     def on_start(self):
         super().on_start()
@@ -141,7 +143,7 @@ class BuildQueen(Build):
         if not env.spawning_pool:
             raise ActionError("Building a Queen Requires a Spawning Pool")
 
-        used, supply = env.get_supply()
+        used, supply = env.supply
         if used + 2 > supply:
             raise ActionError("Insufficient Supply", used, supply)
 
@@ -157,8 +159,8 @@ class BuildOverlord(Build):
     mineral_cost = 100
 
     def __init__(self, parent):
+        self.base = parent.focus
         super().__init__(parent)
-        self.base = self.parent.focus
 
     def on_start(self):
         super().on_start()
@@ -174,7 +176,7 @@ class BuildOverlord(Build):
         if not isinstance(env.focus, Base):
             raise ActionError("Base Not Selected", type(env.focus))
 
-        if env.focus.larva <= 0:
+        if env.focus.larva < 1:
             raise ActionError("Not Enough Larva", env.focus.larva)
 
 
@@ -213,8 +215,8 @@ class BuildExtractor(Build):
     mineral_cost = 25
 
     def __init__(self, parent):
+        self.geyser = parent.target
         super().__init__(parent)
-        self.geyser = self.parent.target
 
     def on_start(self):
         super().on_start()
@@ -280,11 +282,11 @@ class SetRallyMinerals(Action):
 
 
 class TransferDrone(Action):
-    time_to_complete = 10
+    time_to_complete = 5
 
     def __init__(self, parent):
+        self.home = parent.target
         super().__init__(parent)
-        self.home = self.parent.target
 
     def on_start(self):
         super().on_start()
@@ -323,8 +325,8 @@ class InjectLarva(Action):
     time_to_complete = 29
 
     def __init__(self, parent):
-        super().__init__(parent)
         self.base = self.parent.focus
+        super().__init__(parent)
 
     def on_complete(self):
         super().on_complete()
@@ -340,4 +342,17 @@ class InjectLarva(Action):
             return ActionError("Queen Required to Inject Larva")
 
 
-
+actions = [
+    BuildDrone,
+    BuildBase,
+    BuildQueen,
+    BuildOverlord,
+    BuildSpawningPool,
+    BuildExtractor,
+    Select,
+    Target,
+    SetRallyMinerals,
+    TransferDrone,
+    InjectLarva,
+    NoOp
+]

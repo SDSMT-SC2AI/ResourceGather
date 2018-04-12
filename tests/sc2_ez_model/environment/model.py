@@ -1,11 +1,51 @@
-from objects import Base
-from actions import ActionError
-import actions as env_actions
+from .objects import Base
+from .actions import ActionError
+from . import actions as env_actions
+
+
+summary_fmt = \
+    """Idealized StarCraft II Environment Game State:
+    minerals:  {env.minerals:8.1f}
+    gas:       {env.gas:8.1f}
+    
+    resources collected: {env.resources_collected:.1f}
+    resource collection rate: {env.resource_collection_rate:.2f}
+    
+    supply: {env.supply[0]:3d} / {env.supply[1]:3d}
+    bases:     {env.number_bases}
+    larva:     {env.larva}
+    drones:    {env.drones}
+    queens:    {env.queens}
+    overlords: {env.overlords}
+
+"""
+
+base_info_fmt = \
+    """Base {base_id}:
+    minerals: {base.minerals.remaining:8.1f} / {base.minerals.max_capacity:8.1f}
+    geyserA: {base.geyserA.remaining:7.1f} / {base.geyserA.max_capacity:7.1f}  (Extractor: {base.geyserA.has_extractor})
+    geyserB: {base.geyserB.remaining:7.1f} / {base.geyserB.max_capacity:7.1f}  (Extractor: {base.geyserB.has_extractor})
+    
+    larva: {base.larva}
+    queens: {base.queens} (queued: {base.queens_queued})
+    
+    drones at minerals: {base.minerals.drones:2d} / {base.minerals.equiv_max:4.1f}
+    drones at GeyserA:  {base.geyserA.drones:2d} / {base.geyserA.equiv_max:4.1f}
+    drones at GeyserB:  {base.geyserB.drones:2d} / {base.geyserB.equiv_max:4.1f}
+    unassigned drones:  {base.unassigned_drones:2d}
+    
+    resource collection rate: {base.resource_collection_rate:.2f}
+
+"""
 
 
 class IdealizedSC2Env:
-    def __init__(self, game_loops_per_agent_step, time_limit):
+    actions = env_actions.actions
+
+    def __init__(self, game_loops_per_agent_step, time_limit=720, silent_errors=False, verbose=False):
         self.time_limit = time_limit
+        self.silent_errors = silent_errors
+        self.verbose = verbose
         self.game_loops_per_agent_step = game_loops_per_agent_step
         self.reset()
 
@@ -15,12 +55,13 @@ class IdealizedSC2Env:
         # State information
         self.bases = [Base(self)]
         self.bases[0].minerals.drones = 12
+        self.bases[0].rally_set = True
         self.focus = self.bases[0]
         self.target = None
         self.clock_rate = 0.1
         self.overlords = 1
         self.spawning_pool = False
-        self.actions_in_progress = []
+        self.actions_in_progress = set()
         self.minerals = 0
         self.gas = 0
         self.resources_collected = 0
@@ -35,10 +76,13 @@ class IdealizedSC2Env:
         valid_action = True
         for a in actions:
             try:
-                self.actions_in_progress.append(a())
+                self.actions_in_progress.add(a(self))
             except ActionError as e:
                 valid_action = False
-                self.log.append(e)
+                if self.silent_errors:
+                    self.log.append(e)
+                else:
+                    raise e
 
         for _ in range(self.game_loops_per_agent_step):
             self.tick()
@@ -55,23 +99,48 @@ class IdealizedSC2Env:
             self.minerals += minerals_gathered
             self.gas += gas_harvested
             self.resources_collected += minerals_gathered + gas_harvested
-            self.resource_collection_rate = minerals_gathered + gas_harvested
+            self.resource_collection_rate = (minerals_gathered + gas_harvested)/self.clock_rate
 
         completed_actions = []
-        for index, action in enumerate(self.actions_in_progress):
+        for action in self.actions_in_progress:
             if action.tick():
-                completed_actions.append(index)
+                completed_actions.append(action)
 
-        for index in completed_actions:
-            self.actions_in_progress.pop(index)
+        for action in completed_actions:
+            self.actions_in_progress.remove(action)
 
         self.time_elapsed += self.clock_rate
 
-    def observe(self):
-        pass
+    @property
+    def drones(self):
+        drones = 0
+        for base in self.bases:
+            drones += base.unassigned_drones
+            drones += base.minerals.drones
+            drones += base.geyserA.drones
+            drones += base.geyserB.drones
+        return drones
 
-    # Returns the total supply and the supply used
-    def get_supply(self):
+    @property
+    def queens(self):
+        queens = 0
+        for base in self.bases:
+            queens += base.queens
+        return queens
+
+    @property
+    def number_bases(self):
+        return len(self.bases)
+
+    @property
+    def larva(self):
+        larva = 0
+        for base in self.bases:
+            larva += base.larva
+        return larva
+
+    @property
+    def supply(self):
         supply = 8 * self.overlords
         used = 0
         for base in self.bases:
@@ -83,30 +152,20 @@ class IdealizedSC2Env:
         supply = max(200, supply)
         return used, supply
 
-    def get_available_actions(self):
+    @property
+    def available_actions(self):
         available_actions = set()
-        for act in [env_actions.BuildDrone,
-                    env_actions.BuildBase,
-                    env_actions.BuildQueen,
-                    env_actions.BuildOverlord,
-                    env_actions.BuildSpawningPool,
-                    env_actions.BuildExtractor,
-                    env_actions.Select,
-                    env_actions.Target,
-                    env_actions.SetRallyMinerals,
-                    env_actions.TransferDrone,
-                    env_actions.InjectLarva,
-                    env_actions.NoOp]:
+        for act in self.actions:
             try:
                 act.verify(self)
                 available_actions.add(act)
             except ActionError:
                 pass
+        return available_actions
 
-
-
-
-
-
-
-
+    def __str__(self):
+        s = summary_fmt.format(env=self)
+        if self.verbose:
+            for number, base in enumerate(self.bases):
+                s += base_info_fmt.format(base_id=number, base=base)
+        return s
