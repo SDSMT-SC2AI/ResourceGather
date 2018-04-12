@@ -54,7 +54,7 @@ class Minerals(Resource):
     def __init__(self, parent):
         super().__init__(
             parent=parent,
-            max_capacity=14400,
+            max_capacity=9600,
             max_drones=16,
             discount_per_drone=0.5,
             rate_per_drone=1.25
