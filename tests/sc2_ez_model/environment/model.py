@@ -11,6 +11,7 @@ class IdealizedSC2Env:
 
     def reset(self):
         self.time_elapsed = 0
+        Base.reset()
 
         # State information
         self.bases = [Base(self)]
@@ -21,7 +22,7 @@ class IdealizedSC2Env:
         self.overlords = 1
         self.spawning_pool = False
         self.actions_in_progress = []
-        self.minerals = 0
+        self.minerals = 50
         self.gas = 0
         self.resources_collected = 0
         self.resource_collection_rate = 0
@@ -80,7 +81,7 @@ class IdealizedSC2Env:
             used += base.minerals.drones + base.geyserA.drones + base.geyserB.drones
             used += 2*base.queens
 
-        supply = max(200, supply)
+        supply = min(200, supply)
         return used, supply
 
     def get_available_actions(self):
