@@ -75,18 +75,34 @@ class IdealizedSC2Env:
         supply = 8 * self.overlords
         used = 0
         for base in self.bases:
-            supply += 15
+            supply += 6
             used += base.unassigned_drones
             used += base.minerals.drones + base.geyserA.drones + base.geyserB.drones
             used += 2*base.queens
 
+        supply = max(200, supply)
         return used, supply
 
     def get_available_actions(self):
         available_actions = set()
-        used, supply = self.get_supply()
-        if used + 1 <= supply:
-            available_actions.add(env_actions.BuildDrone)
+        for act in [env_actions.BuildDrone,
+                    env_actions.BuildBase,
+                    env_actions.BuildQueen,
+                    env_actions.BuildOverlord,
+                    env_actions.BuildSpawningPool,
+                    env_actions.BuildExtractor,
+                    env_actions.Select,
+                    env_actions.Target,
+                    env_actions.SetRallyMinerals,
+                    env_actions.TransferDrone,
+                    env_actions.InjectLarva,
+                    env_actions.NoOp]:
+            try:
+                act.verify(self)
+                available_actions.add(act)
+            except ActionError:
+                pass
+
 
 
 
