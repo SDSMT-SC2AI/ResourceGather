@@ -9,7 +9,7 @@ from time import sleep
 sys.path.insert(0, abspath(join(dirname(__file__), "../..")))
 import network
 from worker import Worker
-from tests.sc2_ez_model.environment.model import IdealizedSC2Env as enviro
+from tests.sc2_ez_model.environment.model import IdealizedSC2Env
 import tests.sc2_ez_model.ez_agent as agent
 import tests.sc2_ez_model.ez_actions as actions
 
@@ -18,22 +18,18 @@ def __main__():
     max_episode_length = 720
     load_model = False
     model_path = './model'
-    flags = common.parse_args.parse_args()
-    stopwatch.sw.enabled = flags.profile or flags.trace
-    stopwatch.sw.trace = flags.trace
 
     agent_cls = agent.Smart
 
     agent.policy_spec.update(      
-            input_size=13,
-            num_actions=len(actions().choices),
-            max_episodes=720,
-            q_range=(30, 31),
+            input_size=14,
+            num_actions=len(actions.Action_Space.choices),
+            max_episodes=1000000,
+            q_range=(10000, 10005),
             hidden_layer_size=30,
-            base_explore_rate=0.3,                 
-            min_explore_rate=0.3
+            base_explore_rate=0.15,                 
+            min_explore_rate=0.002
         )
-    # maps.get(flags.map)
 
     if not os.path.exists(model_path):
         os.makedirs(model_path)
@@ -45,8 +41,8 @@ def __main__():
         global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
         optimizer = tf.train.AdamOptimizer(learning_rate=0.005)
         master_network = agent.network.Policy('global', global_episodes, agent.policy_spec)
-        # num_workers = psutil.cpu_count()
-        num_workers = 1 # Hardcoded to one for quicker testing
+        num_workers = psutil.cpu_count()
+        # num_workers = 1 # Hardcoded to one for quicker testing
 
         global _max_score, _running_avg_score, _steps, _episodes
         _max_score = 0
@@ -57,9 +53,9 @@ def __main__():
         # Initialize workers
         for i in range(num_workers):
             name = "worker_" + str(i)
-            agent_inst = agent_cls(name, 'global', optimizer, global_episodes, actions())
-            env = enviro.IdealizedSC2Env(
-                    game_loops_per_agent_step=10, 
+            agent_inst = agent_cls(name, 'global', optimizer, global_episodes, actions.Action_Space())
+            env = IdealizedSC2Env(
+                    game_loops_per_agent_step=1, 
                     time_limit=720, 
                     silent_errors=False, 
                     verbose=False
@@ -70,12 +66,13 @@ def __main__():
                     number=i,
                     main=sys.modules[__name__],
                     env=env,
-                    actions=actions(),
+                    actions=actions.Action_Space(),
                     agent=agent_inst,
                     model_path=model_path,
                     global_episodes=global_episodes,
-                    buffer_min=60,
-                    buffer_max=720
+                    buffer_min=105,
+                    buffer_max=210,
+                    max_episodes=1000000
                 )
             )
         saver = tf.train.Saver(max_to_keep=5)

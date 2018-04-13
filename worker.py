@@ -8,7 +8,7 @@ class Worker:
     def __init__(self, name, number,
                  main, env, actions, agent,
                  model_path, global_episodes,
-                 buffer_min=10, buffer_max=30):
+                 buffer_min=10, buffer_max=30, max_episodes=10000):
         self.name = "worker_" + str(name)
         self.number = number
         self.model_path = model_path
@@ -19,6 +19,7 @@ class Worker:
         self.episode_rewards = []
         self.episode_lengths = []
         self.episode_mean_values = []
+        self.max_episodes = max_episodes
         self.summary_writer = tf.summary.FileWriter("train_" + str(self.number))
         self.main = main
 
@@ -68,7 +69,7 @@ class Worker:
         print("Starting worker " + str(self.number))
         with sess.as_default(), sess.graph.as_default():
             
-            while not coord.should_stop():
+            while not coord.should_stop() and episode_count < self.max_episodes:
                 self.agent.update_policy(sess)
 
                 episode_buffer = [[] for _ in range(4)]
@@ -77,7 +78,7 @@ class Worker:
                 episode_step_count = 0
 
                 # Start new episode
-                env_obs = self.env.reset() # There is only one agent running, so [0]
+                env_obs = self.env.reset() # There is only one agent running, so [0]                
                 reward, obs, episode_end = self.agent.process_observation(env_obs)
 
                 while not episode_end:
@@ -123,7 +124,7 @@ class Worker:
                       "accuracy = {:13.4f}, "
                       "consistency = {:13.4f}, "
                       "advantage = {:8.4f}, "
-                      "reward = {:4d}".format(
+                      "reward = {:.1f}".format(
                         np.sum(self.main._episodes), loss, accuracy, consistency, advantage, episode_reward))
 
                 # Update the network using the episode buffer at the end of the episode

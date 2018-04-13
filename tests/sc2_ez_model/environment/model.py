@@ -54,11 +54,12 @@ class IdealizedSC2Env:
         self.time_elapsed = 0
 
         # State information
+        self.base_index = 0
         self.bases = [Base(self)]
         self.bases[0].minerals.drones = 12
         self.focus = self.bases[0]
         self.target = None
-        self.clock_rate = 0.1
+        self.clock_rate = 1
         self.overlords = 1
         self.spawning_pool = False
         self.actions_in_progress = set()
@@ -68,7 +69,6 @@ class IdealizedSC2Env:
         self.resource_collection_rate = 0
         self.log = []
         self.reward = 0
-        self.base_index = 0
 
         # returns reward, observation, and game_end flag
         return [[self.reward, self, False], ]

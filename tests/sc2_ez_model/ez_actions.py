@@ -9,7 +9,7 @@ class ActionEnum:
     build_base = 1
     build_drone = 2
     build_queen = 3
-    build_overload = 4
+    build_overlord = 4
     inject_larva = 5
 
 
@@ -18,7 +18,7 @@ class Action_Space:
         ActionEnum.build_base: lambda self, obs: self.build_base(obs),
         ActionEnum.build_drone: lambda self, obs: self.build_drone(obs),
         ActionEnum.build_queen: lambda self, obs: self.build_queen(obs),
-        ActionEnum.build_overload: lambda self, obs: self.build_overlord(obs),
+        ActionEnum.build_overlord: lambda self, obs: self.build_overlord(obs),
         ActionEnum.inject_larva: lambda self, obs: self.inject_larva(obs),
         ActionEnum.no_op: lambda self, obs: self.no_op(),
     }
@@ -28,16 +28,19 @@ class Action_Space:
 
     def __init__(self):
         self.actionq = deque([])
+        self.base_count = 1
 
     def act(self, choice, obs):
+        # if (choice != 0):
+            # print(choice)
         if choice < len(self.choices):
-            return self.choices[choice](self, obs[0])
+            return self.choices[choice](self, obs[1])
         else:
-            return self.choices[-1]
+            return self.choices[ActionEnum.no_op](self, obs[1])
 
-    def action_step(self):
+    def action_step(self, _=None):
         if not self.actionq:
-            return self.no_op(), 0
+            return lambda env: NoOp(env), 0
         return self.actionq.popleft(), 0
 
     def no_op(self):
@@ -52,12 +55,12 @@ class Action_Space:
                 self.actionq.append(lambda env: BuildOverlord(env))
                 return 0
             else:
-                return -100
-        return -100
+                return -1
+        return -1
 
     def build_base(self, obs):
-        if obs.number_bases > 5:
-            return -100
+        if self.base_count >= 5:
+            return -1
 
         for base in obs.bases:
             if base.minerals.drones > 1:
@@ -65,10 +68,11 @@ class Action_Space:
                 if BuildBase in obs.available_actions:
                     self.actionq.append(lambda env: Select(env, base.minerals))
                     self.actionq.append(lambda env: BuildBase(env))
+                    self.base_count += 1
                     return 0
                 else:
-                    return -100
-        return -100
+                    return -1
+        return -1
 
     def build_drone(self, obs):
         for base in obs.bases:
@@ -79,8 +83,8 @@ class Action_Space:
                     self.actionq.append(lambda env: BuildDrone(env))
                     return 0
                 else:
-                    return -100
-        return -100
+                    return -1
+        return -1
 
     def build_spawning_pool(self, obs):
         for base in obs.bases:
@@ -91,8 +95,8 @@ class Action_Space:
                     self.actionq.append(lambda env: BuildSpawningPool(env))
                     return 0
                 else:
-                    return -100
-        return -100
+                    return -1
+        return -1
 
     def build_queen(self, obs):
         for base in obs.bases:
@@ -104,10 +108,10 @@ class Action_Space:
                         self.actionq.append(lambda env: BuildQueen(env))
                         return 0
                     else:
-                        return -100
+                        return -1
                 else:
                     return self.build_spawning_pool(obs)
-        return -100
+        return -1
 
     def inject_larva(self, obs):
         for base in obs.bases:
@@ -116,7 +120,7 @@ class Action_Space:
                 self.actionq.append(lambda env: Select(env, base))
                 self.actionq.append(lambda env: InjectLarva(env))
                 return 0
-        return -100
+        return -1
 
 
     # takes in the available actions from the observation (should be a list of action_ids) and returns a list of 0's and 1's with respect to our action space.
@@ -133,7 +137,7 @@ class Action_Space:
 
         for base in env.bases:
             larva_available += base.larva
-            if base.queen > 0:
+            if base.queens > 0:
                 queen_flag = True
             if base.injectable:
                 injectable = True
