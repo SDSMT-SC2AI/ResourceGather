@@ -4,15 +4,24 @@ from .environment.actions import \
     BuildBase, Select, InjectLarva, NoOp
 
 
+class ActionEnum:
+    no_op = 0
+    build_base = 1
+    build_drone = 2
+    build_queen = 3
+    build_overload = 4
+    inject_larva = 5
+
+
 class Action_Space:
-    choices = [
-        lambda self, obs: self.build_base(obs),
-        lambda self, obs: self.build_drone(obs),
-        lambda self, obs: self.build_queen(obs),
-        lambda self, obs: self.build_overlord(obs),
-        lambda self, obs: self.inject_larva(obs),
-        lambda self, obs: self.no_op,
-    ]
+    choices = {
+        ActionEnum.build_base: lambda self, obs: self.build_base(obs),
+        ActionEnum.build_drone: lambda self, obs: self.build_drone(obs),
+        ActionEnum.build_queen: lambda self, obs: self.build_queen(obs),
+        ActionEnum.build_overload: lambda self, obs: self.build_overlord(obs),
+        ActionEnum.inject_larva: lambda self, obs: self.inject_larva(obs),
+        ActionEnum.no_op: lambda self, obs: self.no_op(),
+    }
     action_spec = {
         'number of actions': len(choices)
     }
@@ -25,6 +34,11 @@ class Action_Space:
             return self.choices[choice](self, obs[0])
         else:
             return self.choices[-1]
+
+    def action_step(self):
+        if not self.actionq:
+            return self.no_op(), 0
+        return self.actionq.popleft(), 0
 
     def no_op(self):
         self.actionq.append(lambda env: NoOp(env))
