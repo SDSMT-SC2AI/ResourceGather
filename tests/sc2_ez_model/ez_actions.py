@@ -138,27 +138,23 @@ class Action_Space:
             if base.injectable:
                 injectable = True
 
-        ext_y, ext_x = (units == 88).nonzero()
-        if len(ext_y) != 0:
-            ext_flag = True
-
         used, supply = env.supply
         supply_available = supply - used
 
         #hatch check
-        if env.minerals >=300 and len(env.bases) < 5:  # flag?
+        if env.minerals >= 300 and len(env.bases) < 5:  # flag?
             actions[ActionEnum.build_base] = 1
 
         #drone conditions
-        if env.minerals >=50 and larva_available > 0 and supply_available > 0:
+        if env.minerals >= 50 and larva_available > 0 and supply_available > 0:
             actions[ActionEnum.build_drone] = 1
 
         #overlord conditions
-        if env.minerals >=100 and larva_available > 0:
+        if env.minerals >= 100 and larva_available > 0:
             actions[ActionEnum.build_overlord] = 1
 
         #queen conditions
-        if env.minerals >=125 and env.spawning_pool and supply_available > 1:
+        if env.minerals >= 125 and env.spawning_pool and supply_available > 1:
             actions[ActionEnum.build_queen] = 1
 
         #inject check
