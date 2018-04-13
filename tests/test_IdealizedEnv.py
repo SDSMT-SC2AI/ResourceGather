@@ -18,10 +18,11 @@ def basic_test():
 
 
 def build_drones():
-    locals().update(actions_by_name)
-    # print(locals())
-    print(state.available_actions)
-    exit()
+    Select = actions_by_name['Select']
+    BuildDrone = actions_by_name["BuildDrone"]
+    BuildOverlord = actions_by_name["BuildOverlord"]
+    NoOp = actions_by_name["NoOp"]
+
     env = IdealizedSC2Env(game_loops_per_agent_step=10,
                           time_limit=100,
                           verbose=True)
@@ -34,8 +35,13 @@ def build_drones():
             reward, state, game_end = env.step([lambda environ: BuildDrone(environ)])[0]
             print("Reward: {}".format(reward))
             print(state)
-        else:
+        elif BuildOverlord in state.available_actions:
             reward, state, game_end = env.step([lambda environ: BuildOverlord(environ)])[0]
+        else:
+            reward, state, game_end = env.step([lambda environ: NoOp(environ)])[0]
+
+    print(state)
+
 
 
 if __name__ == "__main__":
