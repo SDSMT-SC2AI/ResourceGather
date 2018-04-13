@@ -54,10 +54,10 @@ class Build(Action):
     def verify(cls, env):
         super().verify(env)
         if env.minerals < cls.mineral_cost:
-            raise ActionError("Insufficient Minerals", mineral_cost, env.minerals)
+            raise ActionError("Insufficient Minerals", cls.mineral_cost, env.minerals)
 
         if env.gas < cls.gas_cost:
-            raise ActionError("Insufficient Vespene Gas", gas_cost, env.gas)
+            raise ActionError("Insufficient Vespene Gas", cls.gas_cost, env.gas)
 
 
 class BuildDrone(Build):
@@ -71,11 +71,12 @@ class BuildDrone(Build):
     def on_start(self):
         super().on_start()
         self.base.larva -= 1
+        self.base.drones_queued += 1
 
     def on_complete(self):
         super().on_complete()
         self.base.unassigned_drones += 1
-        self.base.needs_attention = True
+        self.base.drones_queued -= 1
 
     @classmethod
     def verify(cls, env):

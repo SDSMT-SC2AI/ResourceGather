@@ -5,15 +5,16 @@ from . import actions as env_actions
 
 summary_fmt = \
     """Idealized StarCraft II Environment Game State:
-    minerals:  {env.minerals:8.1f}
-    gas:       {env.gas:8.1f}
+    time elapsed: {env.time_elapsed:.1f}
+    minerals:     {env.minerals:8.1f}
+    gas:          {env.gas:8.1f}
     
     resources collected: {env.resources_collected:.1f}
     resource collection rate: {env.resource_collection_rate:.2f}
     
     supply: {env.supply[0]:3d} / {env.supply[1]:3d}
     bases:     {env.number_bases}
-    larva:     {env.larva}
+    larva:     {env.larva:1d}
     drones:    {env.drones}
     queens:    {env.queens}
     overlords: {env.overlords}
@@ -28,12 +29,12 @@ base_info_fmt = \
     
     larva: {base.larva}
     queens: {base.queens} (queued: {base.queens_queued})
+    unassigned drones:  {base.unassigned_drones:2d} (queued: {base.drones_queued})
     
     drones at minerals: {base.minerals.drones:2d} / {base.minerals.equiv_max:4.1f}
     drones at GeyserA:  {base.geyserA.drones:2d} / {base.geyserA.equiv_max:4.1f}
     drones at GeyserB:  {base.geyserB.drones:2d} / {base.geyserB.equiv_max:4.1f}
-    unassigned drones:  {base.unassigned_drones:2d}
-    
+        
     resource collection rate: {base.resource_collection_rate:.2f}
 
 """
@@ -138,7 +139,7 @@ class IdealizedSC2Env:
     def larva(self):
         larva = 0
         for base in self.bases:
-            larva += base.larva
+            larva += int(base.larva)
         return larva
 
     @property
@@ -147,9 +148,10 @@ class IdealizedSC2Env:
         used = 0
         for base in self.bases:
             supply += 6
-            used += base.unassigned_drones
+            used += base.unassigned_drones + base.drones_queued
             used += base.minerals.drones + base.geyserA.drones + base.geyserB.drones
-            used += 2*base.queens
+            used += 2*base.queens + 2*base.queens_queued
+
 
         supply = min(200, supply)
         return used, supply

@@ -11,6 +11,7 @@ class Base:
         self.queens = 0
         self.queens_queued = 0
         self.index = parent.base_index
+        self.drones_queued = 0
 
     def get_drones(self):
         return self.minerals.drones, self.geyserA.drones, self.geyserB.drones
@@ -19,7 +20,7 @@ class Base:
         mins = self.minerals.collect()
         gasA = self.geyserA.collect()
         gasB = self.geyserB.collect()
-        if self.minerals.drones - self.mines.equiv_max > 1:
+        if self.minerals.drones - self.minerals.equiv_max > 1:
             self.unassigned_drones += self.minerals.drones - int(self.minerals.equiv_max)
             self.minerals.drones -= int(self.minerals.equiv_max)
             self.assign_drones()
@@ -45,7 +46,6 @@ class Base:
     def assign_drones(self):
         for _ in range(self.unassigned_drones):
             if self.minerals.drones < self.minerals.equiv_max:
-                self.rally_set = True
                 self.unassigned_drones -= 1
                 self.minerals.drones += 1
             elif self.geyserA.has_extractor and self.geyserA.drones < self.geyserA.equiv_max:
