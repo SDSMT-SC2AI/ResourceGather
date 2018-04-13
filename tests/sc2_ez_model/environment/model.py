@@ -57,7 +57,6 @@ class IdealizedSC2Env:
         # State information
         self.bases = [Base(self)]
         self.bases[0].minerals.drones = 12
-        self.bases[0].rally_set = True
         self.focus = self.bases[0]
         self.target = None
         self.clock_rate = 0.1
@@ -151,7 +150,6 @@ class IdealizedSC2Env:
             used += base.unassigned_drones + base.drones_queued
             used += base.minerals.drones + base.geyserA.drones + base.geyserB.drones
             used += 2*base.queens + 2*base.queens_queued
-
 
         supply = min(200, supply)
         return used, supply
