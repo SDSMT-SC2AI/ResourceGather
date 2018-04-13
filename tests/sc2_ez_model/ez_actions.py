@@ -104,3 +104,53 @@ class Action_Space:
                 return 0
         return -100
 
+
+    # takes in the available actions from the observation (should be a list of action_ids) and returns a list of 0's and 1's with respect to our action space.
+    # 0 if the i_th action is not available, 1 if it is available. 
+    def check_available_actions(self, env):
+        #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas        
+        actions = [0]*len(self.choices)
+
+        larva_available = 0
+        gas_flag = True
+        ext_flag = False
+        queen_flag = False
+        injectable = False
+
+        for base in env.bases:
+            larva_available += base.larva
+            if base.queen > 0:
+                queen_flag = True
+            if base.injectable:
+                injectable = True
+
+        ext_y, ext_x = (units == 88).nonzero()
+        if len(ext_y) != 0:
+            ext_flag = True
+
+        used, supply = env.supply
+        supply_available = supply - used
+
+        #hatch check
+        if env.minerals >=300 and len(env.bases) < 5:  # flag?
+            actions[ActionEnum.build_base] = 1
+
+        #drone conditions
+        if env.minerals >=50 and larva_available > 0 and supply_available > 0:
+            actions[ActionEnum.build_drone] = 1
+
+        #overlord conditions
+        if env.minerals >=100 and larva_available > 0:
+            actions[ActionEnum.build_overlord] = 1
+
+        #queen conditions
+        if env.minerals >=125 and env.spawning_pool and supply_available > 1:
+            actions[ActionEnum.build_queen] = 1
+
+        #inject check
+        if injectable:
+            actions[ActionEnum.inject_larva] = 1
+
+        actions[ActionEnum.no_op] = 1
+
+        return actions

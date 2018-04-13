@@ -48,7 +48,6 @@ class IdealizedSC2Env:
         self.silent_errors = silent_errors
         self.verbose = verbose
         self.game_loops_per_agent_step = game_loops_per_agent_step
-        self.base_index = 0
         self.reset()
 
     def reset(self):

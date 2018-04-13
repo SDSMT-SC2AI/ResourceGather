@@ -26,7 +26,7 @@ def __main__():
 
     agent.policy_spec.update(      
             input_size=13,
-            num_actions=len(actions.choices),
+            num_actions=len(actions().choices),
             max_episodes=720,
             q_range=(30, 31),
             hidden_layer_size=30,
@@ -57,7 +57,7 @@ def __main__():
         # Initialize workers
         for i in range(num_workers):
             name = "worker_" + str(i)
-            agent_inst = agent_cls(name, 'global', optimizer, global_episodes, actions)
+            agent_inst = agent_cls(name, 'global', optimizer, global_episodes, actions())
             env = enviro.IdealizedSC2Env(
                     game_loops_per_agent_step=10, 
                     time_limit=720, 
@@ -70,7 +70,7 @@ def __main__():
                     number=i,
                     main=sys.modules[__name__],
                     env=env,
-                    actions=actions,
+                    actions=actions(),
                     agent=agent_inst,
                     model_path=model_path,
                     global_episodes=global_episodes,
