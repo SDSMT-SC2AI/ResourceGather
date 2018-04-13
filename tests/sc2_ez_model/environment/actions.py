@@ -106,6 +106,7 @@ class BuildBase(Build):
 
     def on_complete(self):
         super().on_complete()
+        self.parent.base_index += 1
         self.parent.bases.append(Base(self.parent))
 
     @classmethod
@@ -327,12 +328,18 @@ class InjectLarva(Action):
     time_to_complete = 29
 
     def __init__(self, parent):
-        self.base = self.parent.focus
+        self.base = parent.focus
         super().__init__(parent)
+
+    def on_start(self):
+        super().on_start()
+        self.base.injectable = False
 
     def on_complete(self):
         super().on_complete()
         self.base.larva = min(19, self.base.larva + 3)
+        self.base.injectable = True
+
 
     @classmethod
     def verify(cls, env):
@@ -340,8 +347,11 @@ class InjectLarva(Action):
         if not isinstance(env.focus, Base):
             raise ActionError("Base Not Selected", type(env.focus))
 
-        if env.focus.queens <= 0:
-            return ActionError("Queen Required to Inject Larva")
+        if env.focus.queens < 1:
+            raise ActionError("Queen Required to Inject Larva")
+
+        if not env.focus.injectable:
+            raise ActionError("Base not injectable")
 
 
 actions = [

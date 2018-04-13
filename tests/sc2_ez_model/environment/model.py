@@ -14,10 +14,11 @@ summary_fmt = \
     
     supply: {env.supply[0]:3d} / {env.supply[1]:3d}
     bases:     {env.number_bases}
-    larva:     {env.larva:1d}
+    larva:     {env.larva:d}
     drones:    {env.drones}
     queens:    {env.queens}
     overlords: {env.overlords}
+    spwnpool:  {env.spawning_pool}
 
 """
 
@@ -27,7 +28,7 @@ base_info_fmt = \
     geyserA: {base.geyserA.remaining:7.1f} / {base.geyserA.max_capacity:7.1f}  (Extractor: {base.geyserA.has_extractor})
     geyserB: {base.geyserB.remaining:7.1f} / {base.geyserB.max_capacity:7.1f}  (Extractor: {base.geyserB.has_extractor})
     
-    larva: {base.larva}
+    larva: {base.larva:.1f}
     queens: {base.queens} (queued: {base.queens_queued})
     unassigned drones:  {base.unassigned_drones:2d} (queued: {base.drones_queued})
     
@@ -42,7 +43,6 @@ base_info_fmt = \
 
 class IdealizedSC2Env:
     actions = env_actions.actions
-
     def __init__(self, game_loops_per_agent_step, time_limit=720, silent_errors=False, verbose=False):
         self.time_limit = time_limit
         self.silent_errors = silent_errors

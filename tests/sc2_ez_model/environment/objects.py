@@ -1,3 +1,5 @@
+from math import sqrt
+
 class Base:
     larva_gen_rate = 11 # Every 11 seconds
     def __init__(self, parent):
@@ -12,34 +14,45 @@ class Base:
         self.queens_queued = 0
         self.index = parent.base_index
         self.drones_queued = 0
+        self.injectable = True
 
     def get_drones(self):
         return self.minerals.drones, self.geyserA.drones, self.geyserB.drones
 
     def production(self):
+        
         mins = self.minerals.collect()
         gasA = self.geyserA.collect()
         gasB = self.geyserB.collect()
-        if self.minerals.drones - self.minerals.equiv_max > 1:
-            self.unassigned_drones += self.minerals.drones - int(self.minerals.equiv_max)
-            self.minerals.drones -= int(self.minerals.equiv_max)
-            self.assign_drones()
-        if self.geyserA.drones - self.geyserA.equiv_max > 1:
-            self.unassigned_drones += self.geyserA.drones - int(self.minerals.equiv_max)
-            self.geyserA.drones -= int(self.minerals.equiv_max)
-            self.assign_drones()
-        if self.geyserB.drones - self.geyserB.equiv_max > 1:
-            self.unassigned_drones += self.geyserB.drones - int(self.minerals.equiv_max)
-            self.geyserB.drones -= int(self.minerals.equiv_max)
-            self.assign_drones()
+        # print("Equiv_max: ", self.minerals.equiv_max)
+        diff_drones = int(self.minerals.drones - self.minerals.equiv_max)
+        if diff_drones > 0:
+            self.unassigned_drones += diff_drones
+            self.minerals.drones -= diff_drones
+            # self.assign_drones()
 
+        diff_drones = int(self.geyserA.drones - self.geyserA.equiv_max)
+        if diff_drones > 0:
+            self.unassigned_drones += diff_drones
+            self.geyserA.drones -= diff_drones
+            # self.assign_drones()
+
+        diff_drones = int(self.geyserB.drones - self.geyserB.equiv_max)
+        if diff_drones > 0:
+            self.unassigned_drones += diff_drones
+            self.geyserB.drones -= diff_drones
+            # self.assign_drones()
+
+        # if self.index == 0:
+            # print("Unassigned Workers: ", self.unassigned_drones)
+        self.move_workers()
+        self.assign_drones()
         return mins, gasA + gasB
 
     def tick(self):
         self.larva += self.parent.clock_rate / self.larva_gen_rate if self.larva < 3 else 0
-        if self.unassigned_drones > 0:
-            self.assign_drones()
-            self.move_workers()
+        # if self.unassigned_drones > 0:
+        self.assign_drones()
         return self.production()
 
 
@@ -63,9 +76,8 @@ class Base:
     # they sit unassigned until a new base is built
     def move_workers(self):
         next_base_idx = self.index + 1
-        if len(self.parent.bases) < next_base_idx:
+        if next_base_idx < len(self.parent.bases):
             self.parent.bases[next_base_idx].unassigned_drones += self.unassigned_drones
-            self.parent.bases[next_base_idx].assign_drones()
             self.unassigned_drones = 0
 
 
@@ -97,7 +109,7 @@ class Resource:
 
     @property
     def equiv_max(self):
-        return self.max_drones * self.remaining / self.max_capacity
+        return self.max_drones * (self.remaining / self.max_capacity)**0.3
 
     @property
     def rate(self):
@@ -116,8 +128,8 @@ class Minerals(Resource):
             parent=parent,
             max_capacity=9600,
             max_drones=16,
-            discount_per_drone=0.5,
-            rate_per_drone=1.25
+            discount_per_drone=0.75,
+            rate_per_drone=1.05
         )
 
 
@@ -127,8 +139,8 @@ class Geyser(Resource):
             parent=parent,
             max_capacity=2250,
             max_drones=3,
-            discount_per_drone=0.5,
-            rate_per_drone=0.94
+            discount_per_drone=0.75,
+            rate_per_drone=0.63
         )
         self.has_extractor = False
 
