@@ -1,10 +1,17 @@
 from collections import deque
 from .environment.actions import \
-    BuildQueen, BuildOverlord, BuildDrone, BuildSpawningPool, BuildBase, Select
+    BuildQueen, BuildOverlord, BuildDrone, BuildSpawningPool, \
+    BuildBase, Select, InjectLarva, NoOp
+
 
 class Action_Space:
     choices = [
-        build_base
+        lambda self, obs: self.build_base(obs),
+        lambda self, obs: self.build_drone(obs),
+        lambda self, obs: self.build_queen(obs),
+        lambda self, obs: self.build_overlord(obs),
+        lambda self, obs: self.inject_larva(obs),
+        lambda self, obs: self.no_op,
     ]
     action_spec = {
         'number of actions': len(choices)
@@ -13,12 +20,26 @@ class Action_Space:
     def __init__(self):
         self.actionq = deque([])
 
-
     def act(self, choice, obs):
         if choice < len(self.choices):
-            self.choices[choice](obs)
+            return self.choices[choice](self, obs[0])
         else:
-            
+            return self.choices[-1]
+
+    def no_op(self):
+        self.actionq.append(lambda env: NoOp(env))
+        return 0
+
+    def build_overlord(self, obs):
+        for base in obs.bases:
+            obs.focus = base
+            if BuildOverlord in obs.available_actions:
+                self.actionq.append(lambda env: Select(env, base))
+                self.actionq.append(lambda env: BuildOverlord(env))
+                return 0
+            else:
+                return -100
+        return -100
 
     def build_base(self, obs):
         if obs.number_bases > 5:
@@ -59,12 +80,11 @@ class Action_Space:
                     return -100
         return -100
 
-    def train_queen(self, obs):
-        obs = obs[0]
-        #if no pool is built redirect to building it instead
+    def build_queen(self, obs):
         for base in obs.bases:
             if base.queens < 1:
                 if obs.spawning_pool:
+                    obs.focus = base
                     if BuildQueen in obs.available_actions:
                         self.actionq.append(lambda env: Select(env, base))
                         self.actionq.append(lambda env: BuildQueen(env))
@@ -75,15 +95,12 @@ class Action_Space:
                     return self.build_spawning_pool(obs)
         return -100
 
+    def inject_larva(self, obs):
+        for base in obs.bases:
+            obs.focus = base
+            if InjectLarva in obs.available_actions:
+                self.actionq.append(lambda env: Select(env, base))
+                self.actionq.append(lambda env: InjectLarva(env))
+                return 0
+        return -100
 
-
-        #select a hatchery
-        units = obs.observation["screen"][_UNIT_TYPE]
-        unit_y, unit_x = (units == _HATCHERY).nonzero()
-        if len(unit_x) == 0:
-            return
-        target = [unit_x.mean(), unit_y.mean()]
-        self.pointq.append(target)
-        self.actionq.append("Select_Point_screen")
-        #que a queen
-        self.actionq.append("Train_Queen_quick")
