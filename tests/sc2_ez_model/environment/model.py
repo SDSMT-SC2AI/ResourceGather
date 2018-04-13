@@ -57,7 +57,6 @@ class IdealizedSC2Env:
         # State information
         self.bases = [Base(self)]
         self.bases[0].minerals.drones = 12
-        self.bases[0].rally_set = True
         self.focus = self.bases[0]
         self.target = None
         self.clock_rate = 0.1
