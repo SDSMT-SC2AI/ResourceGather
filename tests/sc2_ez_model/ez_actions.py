@@ -38,6 +38,10 @@ class Action_Space:
         else:
             return self.choices[ActionEnum.no_op](self, obs[1])
 
+    def reset(self):
+        self.actionq = deque([])
+        self.base_count = 1
+
     def action_step(self, _=None):
         if not self.actionq:
             return lambda env: NoOp(env), 0
@@ -53,10 +57,9 @@ class Action_Space:
             if BuildOverlord in obs.available_actions:
                 self.actionq.append(lambda env: Select(env, base))
                 self.actionq.append(lambda env: BuildOverlord(env))
-                return 0
-            else:
-                return -1
-        return -1
+                used, available = obs.supply
+                return used - available
+        return -10
 
     def build_base(self, obs):
         if self.base_count >= 5:
@@ -70,21 +73,17 @@ class Action_Space:
                     self.actionq.append(lambda env: BuildBase(env))
                     self.base_count += 1
                     return 0
-                else:
-                    return -1
-        return -1
+        return -10
 
     def build_drone(self, obs):
         for base in obs.bases:
-            if base.minerals.drones < base.minerals.equiv_max and base.larva >= 1:
+            if base.larva >= 1:
                 obs.focus = base
                 if BuildDrone in obs.available_actions:
                     self.actionq.append(lambda env: Select(env, base))
                     self.actionq.append(lambda env: BuildDrone(env))
-                    return 0
-                else:
-                    return -1
-        return -1
+                    return base.minerals.equiv_max - base.minerals.drones
+        return -10
 
     def build_spawning_pool(self, obs):
         for base in obs.bases:
@@ -94,9 +93,7 @@ class Action_Space:
                     self.actionq.append(lambda env: Select(env, base.minerals))
                     self.actionq.append(lambda env: BuildSpawningPool(env))
                     return 0
-                else:
-                    return -1
-        return -1
+        return -10
 
     def build_queen(self, obs):
         for base in obs.bases:
@@ -107,11 +104,9 @@ class Action_Space:
                         self.actionq.append(lambda env: Select(env, base))
                         self.actionq.append(lambda env: BuildQueen(env))
                         return 0
-                    else:
-                        return -1
                 else:
                     return self.build_spawning_pool(obs)
-        return -1
+        return -10
 
     def inject_larva(self, obs):
         for base in obs.bases:
@@ -120,7 +115,7 @@ class Action_Space:
                 self.actionq.append(lambda env: Select(env, base))
                 self.actionq.append(lambda env: InjectLarva(env))
                 return 0
-        return -1
+        return -10
 
 
     # takes in the available actions from the observation (should be a list of action_ids) and returns a list of 0's and 1's with respect to our action space.

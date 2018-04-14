@@ -11,9 +11,9 @@ policy_spec = network.Policy.policy_spec(input_size=2,
                                          max_episodes=2500,
                                          min_explore_rate=0.01)
 trainer_spec = network.Trainer.trainer_spec(consistency_coefficient=0.3,
-                                            advantage_coefficient=2.0,
-                                            discount_factor=0.9,
-                                            max_grad_norm=5.0)
+                                            advantage_coefficient=10.0,
+                                            discount_factor=0.99,
+                                            max_grad_norm=4.0)
 
 
 

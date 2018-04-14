@@ -59,7 +59,7 @@ class IdealizedSC2Env:
         self.bases[0].minerals.drones = 12
         self.focus = self.bases[0]
         self.target = None
-        self.clock_rate = 1
+        self.clock_rate = 0.1
         self.overlords = 1
         self.spawning_pool = False
         self.actions_in_progress = set()

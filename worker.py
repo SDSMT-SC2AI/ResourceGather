@@ -2,26 +2,27 @@ import tensorflow as tf
 import numpy as np
 
 mse = tf.losses.mean_squared_error
-
+per_point = 10
 
 class Worker:
     def __init__(self, name, number,
                  main, env, actions, agent,
                  model_path, global_episodes,
                  buffer_min=10, buffer_max=30, max_episodes=10000):
-        self.name = "worker_" + str(name)
+        self.name = name
         self.number = number
         self.model_path = model_path
         self.buffer_min = buffer_min
         self.buffer_max = buffer_max
         self.global_episodes = global_episodes
         self.increment = self.global_episodes.assign_add(1)
-        self.episode_rewards = []
-        self.episode_lengths = []
-        self.episode_mean_values = []
+        self.episode_rewards = np.zeros(10)
+        self.episode_lengths = np.zeros(10)
+        self.episode_mean_values = np.zeros(10)
         self.max_episodes = max_episodes
-        self.summary_writer = tf.summary.FileWriter("train_" + str(self.number))
+        self.summary_writer = tf.summary.FileWriter("workerData/" + self.name)
         self.main = main
+        self.log = []
 
         # Create the local copy of the agent which inherits the global network parameters
         self.agent = agent
@@ -63,7 +64,7 @@ class Worker:
         return feed_back, env_obs
 
     def work(self, max_episode_length, sess, coord, saver):
-        loss = accuracy = consistency = advantage = gradient_norms = var_norms = 0
+        self.summary_writer.add_graph(sess.graph)
         episode_count = sess.run(self.global_episodes)
         total_steps = 0
         print("Starting worker " + str(self.number))
@@ -73,12 +74,15 @@ class Worker:
                 self.agent.update_policy(sess)
 
                 episode_buffer = [[] for _ in range(4)]
-                episode_values = []
+                episode_values = 0
                 episode_reward = 0
                 episode_step_count = 0
+                buffer_dumps = 0
+                loss = accuracy = consistency = advantage = gradient_norms = var_norms = 0
 
                 # Start new episode
-                env_obs = self.env.reset() # There is only one agent running, so [0]                
+                env_obs = self.env.reset() # There is only one agent running, so [0]
+                self.actions.reset()
                 reward, obs, episode_end = self.agent.process_observation(env_obs)
 
                 while not episode_end:
@@ -89,7 +93,7 @@ class Worker:
                     for i, v in enumerate([choice, reward + feedback, obs, value]):
                         episode_buffer[i].append(v)
 
-                    episode_values.append(value)
+                    episode_values += value
                     episode_reward += reward + feedback
                     total_steps += 1
                     episode_step_count += 1
@@ -98,14 +102,22 @@ class Worker:
                         break
 
                     if len(episode_buffer[0]) == self.buffer_max and episode_step_count != max_episode_length - 1:
+                        buffer_dumps += 1
                         bootstrap = self.agent.value(sess, obs)
-                        loss, accuracy, consistency, advantage, gradient_norms, var_norms = \
-                            self.train(episode_buffer, sess, bootstrap)
+                        v = self.train(episode_buffer, sess, bootstrap)
+                        loss += v[0]
+                        accuracy += v[1]
+                        consistency += v[2]
+                        advantage += v[3]
+                        gradient_norms += v[4]
+                        var_norms += v[5]
+
                         episode_buffer = [feed[-self.buffer_min:] for feed in episode_buffer]
 
-                self.episode_rewards.append(episode_reward)
-                self.episode_lengths.append(episode_step_count)
-                self.episode_mean_values.append(np.mean(episode_values))
+
+                self.episode_rewards[episode_count % per_point] = env_obs[0][1].resources_collected
+                self.episode_lengths[episode_count % per_point] = episode_step_count
+                self.episode_mean_values[episode_count % per_point] = episode_values / episode_step_count
                 episode_count += 1
 
                 if self.main._max_score < episode_reward:
@@ -114,39 +126,51 @@ class Worker:
                 self.main._episodes[self.number] = episode_count
                 self.main._steps[self.number] = total_steps
 
-                #print(
-                 #   "{} Step #{} Episode #{} Reward: {}".format(self.name, total_steps, episode_count, episode_reward))
-                #print("Total Steps: {}\tTotal Episodes: {}\tMax Score: {}\tAvg Score: {}".format(
-                  #  np.sum(self.main._steps), np.sum(self.main._episodes), self.main._max_score, self.main._running_avg_score))
-
                 print("{:6.0f} Episodes: "
                       "loss = {:13.4f}, "
                       "accuracy = {:13.4f}, "
                       "consistency = {:13.4f}, "
                       "advantage = {:8.4f}, "
-                      "reward = {:.1f}".format(
-                        np.sum(self.main._episodes), loss, accuracy, consistency, advantage, episode_reward))
+                      "reward = {:8.1f}, "
+                      "minerals = {:8.1f}".format(
+                        np.sum(self.main._episodes), loss, accuracy,
+                        consistency, advantage, episode_reward,
+                        env_obs[0][1].resources_collected))
 
                 # Update the network using the episode buffer at the end of the episode
                 if len(episode_buffer) > self.buffer_min:
+                    buffer_dumps += 1
                     bootstrap = self.agent.value(sess, obs)
-                    loss, accuracy, consistency, advantage, gradient_norms, var_norms = \
-                        self.train(episode_buffer, sess, bootstrap)
+                    v = self.train(episode_buffer, sess, bootstrap)
+                    loss += v[0]
+                    accuracy += v[1]
+                    consistency += v[2]
+                    advantage += v[3]
+                    gradient_norms += v[4]
+                    var_norms += v[5]
 
-                if episode_count % 50 == 0 and episode_count != 0:
-                    if episode_count % 2500 == 0 and self.name == 'worker_0':
+                loss /= buffer_dumps
+                accuracy /= buffer_dumps
+                consistency /= buffer_dumps
+                advantage /= buffer_dumps
+                gradient_norms /= buffer_dumps
+                var_norms /= buffer_dumps
+
+                if episode_count % per_point == 0 and episode_count != 0:
+                    if episode_count % 250 == 0 and self.name == 'worker_0':
                         saver.save(sess, self.model_path + '/model-' + str(episode_count) + '.cptk')
                         print("Saved Model")
 
-                    mean_reward = np.mean(self.episode_rewards[-5:])
-                    mean_length = np.mean(self.episode_lengths[-5:])
-                    mean_value = np.mean(self.episode_mean_values[-5:])
+                    mean_reward = np.mean(self.episode_rewards)
+                    mean_length = np.mean(self.episode_lengths)
+                    mean_value = np.mean(self.episode_mean_values)
                     summary = tf.Summary()
                     summary.value.add(tag='Perf/Reward', simple_value=float(mean_reward))
                     summary.value.add(tag='Perf/Length', simple_value=float(mean_length))
                     summary.value.add(tag='Perf/Value', simple_value=float(mean_value))
                     summary.value.add(tag='Losses/Accuracy', simple_value=float(accuracy))
                     summary.value.add(tag='Losses/Consistency', simple_value=float(consistency))
+                    summary.value.add(tag='Losses/Advantage', simple_value=float(advantage))
                     summary.value.add(tag='Losses/Grad Norm', simple_value=float(gradient_norms))
                     summary.value.add(tag='Losses/Var Norm', simple_value=float(var_norms))
                     self.summary_writer.add_summary(summary, episode_count)

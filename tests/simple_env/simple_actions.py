@@ -20,6 +20,9 @@ class ActionSpace:
             ActionSpace.choices[0](self.actionq)
             return -1
 
+    def reset(self):
+        self.actionq = deque([])
+
     def action_step(self, env_obs=None):
         if self.actionq:
             action = self.actionq.popleft()

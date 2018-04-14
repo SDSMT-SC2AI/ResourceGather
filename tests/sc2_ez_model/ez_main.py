@@ -15,6 +15,8 @@ import tests.sc2_ez_model.ez_actions as actions
 
 
 def __main__():
+    run_id = sys.argv[1]
+    print("Running", run_id)
     max_episode_length = 720
     load_model = False
     model_path = './model'
@@ -24,10 +26,10 @@ def __main__():
     agent.policy_spec.update(      
             input_size=14,
             num_actions=len(actions.Action_Space.choices),
-            max_episodes=1000000,
+            max_episodes=30000,
             q_range=(10000, 10005),
-            hidden_layer_size=30,
-            base_explore_rate=0.15,                 
+            hidden_layer_size=60,
+            base_explore_rate=0.3,
             min_explore_rate=0.002
         )
 
@@ -39,7 +41,7 @@ def __main__():
 
     with tf.device("/cpu:0"):
         global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
-        optimizer = tf.train.AdamOptimizer(learning_rate=0.005)
+        optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
         master_network = agent.network.Policy('global', global_episodes, agent.policy_spec)
         num_workers = psutil.cpu_count()
         # num_workers = 1 # Hardcoded to one for quicker testing
@@ -52,10 +54,10 @@ def __main__():
         workers = []
         # Initialize workers
         for i in range(num_workers):
-            name = "worker_" + str(i)
+            name = "worker_" + str(i) + run_id
             agent_inst = agent_cls(name, 'global', optimizer, global_episodes, actions.Action_Space())
             env = IdealizedSC2Env(
-                    game_loops_per_agent_step=1, 
+                    game_loops_per_agent_step=5,
                     time_limit=720, 
                     silent_errors=False, 
                     verbose=False
@@ -70,9 +72,9 @@ def __main__():
                     agent=agent_inst,
                     model_path=model_path,
                     global_episodes=global_episodes,
-                    buffer_min=105,
-                    buffer_max=210,
-                    max_episodes=1000000
+                    buffer_min=480,
+                    buffer_max=720,
+                    max_episodes=100000
                 )
             )
         saver = tf.train.Saver(max_to_keep=5)
