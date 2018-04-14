@@ -33,9 +33,9 @@ class Trainer:
             q = select_from(policy.q, self.actions)
             discounted_rewards = discount(self.rewards, gamma, self.values[-1])
 
-            self.accuracy_loss = tf.reduce_mean(tf.square(q - discounted_rewards)) * (1 - gamma + 0.000001)
+            self.accuracy_loss = tf.reduce_mean(tf.square(q - discounted_rewards)) * (1 - gamma)
             self.consistent_loss = tf.reduce_mean(tf.square(q - self.values[1:]))
-            self.advantage = tf.reduce_mean(q - self.values[:-1])
+            self.advantage = tf.reduce_mean(q - tf.reduce_mean(policy.q, axis=1))
             self.loss = a_c * self.accuracy_loss + c_c * self.consistent_loss - adv_c * self.advantage
 
             # Get gradients from local network using local losses
@@ -61,6 +61,7 @@ class Trainer:
                 [self.apply_grads]],  # ops
             feed_dict={
                 self.policy.input: obs,
+                self.policy.exploration_rate: self.policy.random_explore_rate,
                 self.actions: actions,
                 self.rewards: rewards,
                 self.values: values}  # inputs
@@ -88,15 +89,15 @@ class Policy:
 
     def __init__(self, scope, episode, policy_spec):
         self.network_spec = policy_spec
+        self.random_explore_rate = np.random.beta(1.5, 6)
 
         with tf.variable_scope(scope):
             # Define the exploration rate reduction policy
-            self.base_exploration_rate = tf.constant(policy_spec['base_explore_rate'])
-            self.min_exploration_rate = tf.constant(policy_spec['min_explore_rate'])
-            self.max_episodes = tf.constant(policy_spec['max_episodes'])
-            self.exploration = self.base_exploration_rate - \
-                ((self.base_exploration_rate - self.min_exploration_rate)*tf.cast(episode, dtype=tf.float32)) \
-                / tf.cast(tf.maximum(self.max_episodes, episode), dtype=tf.float32)
+            self.exploration_rate = tf.placeholder(tf.float32, shape=[])
+            adjust = tf.minimum(1.0, tf.cast(episode, dtype=tf.float32) /
+                                tf.cast(policy_spec['max_episodes'], dtype=tf.float32))
+            factor = (1 - adjust) * self.network_spec['base_explore_rate'] + adjust * policy_spec['min_explore_rate']
+            self.exploration = self.exploration_rate * factor
 
             # Define the neural net operations
             self.input = tf.placeholder(shape=[None, policy_spec['input_size']], dtype=tf.float32, name="input")
@@ -125,10 +126,15 @@ class Policy:
             self.action = tf.reshape(tf.multinomial(tf.log(self.probs), 1), [-1])
             self.value = tf.reduce_sum(self.probs * self.q, axis=1) / tf.reduce_sum(self.probs, axis=1)
 
+    def reset(self):
+        self.random_explore_rate = np.random.beta(1.5, 6)
+
     def step(self, sess, obs):
         return sess.run(fetches=[self.action, self.value],  # returns
-                        feed_dict={self.input: obs})  # input
+                        feed_dict={self.input: obs,
+                                   self.exploration_rate: self.random_explore_rate})  # input
 
     def get_value(self, sess, obs):
         return sess.run(fetches=self.value,  # returns
-                        feed_dict={self.input: obs})  # input
+                        feed_dict={self.input: obs,
+                                   self.exploration_rate: self.random_explore_rate})  # input

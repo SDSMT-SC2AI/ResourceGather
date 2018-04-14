@@ -24,12 +24,12 @@ def __main__():
     agent_cls = agent.Smart
 
     agent.policy_spec.update(      
-            input_size=14,
+            input_size=12,
             num_actions=len(actions.Action_Space.choices),
-            max_episodes=30000,
-            q_range=(10000, 10005),
+            max_episodes=20000,
+            q_range=(10, 10.01),
             hidden_layer_size=60,
-            base_explore_rate=0.3,
+            base_explore_rate=0.2,
             min_explore_rate=0.002
         )
 
@@ -41,7 +41,7 @@ def __main__():
 
     with tf.device("/cpu:0"):
         global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
-        optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+        optimizer = tf.train.AdamOptimizer(learning_rate=0.000001)
         master_network = agent.network.Policy('global', global_episodes, agent.policy_spec)
         num_workers = psutil.cpu_count()
         # num_workers = 1 # Hardcoded to one for quicker testing
@@ -74,7 +74,7 @@ def __main__():
                     global_episodes=global_episodes,
                     buffer_min=480,
                     buffer_max=720,
-                    max_episodes=100000
+                    max_episodes=20000
                 )
             )
         saver = tf.train.Saver(max_to_keep=5)

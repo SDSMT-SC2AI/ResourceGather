@@ -17,6 +17,7 @@ class Worker:
         self.global_episodes = global_episodes
         self.increment = self.global_episodes.assign_add(1)
         self.episode_rewards = np.zeros(10)
+        self.episode_real_rewards = np.zeros(10)
         self.episode_lengths = np.zeros(10)
         self.episode_mean_values = np.zeros(10)
         self.max_episodes = max_episodes
@@ -64,7 +65,6 @@ class Worker:
         return feed_back, env_obs
 
     def work(self, max_episode_length, sess, coord, saver):
-        self.summary_writer.add_graph(sess.graph)
         episode_count = sess.run(self.global_episodes)
         total_steps = 0
         print("Starting worker " + str(self.number))
@@ -83,6 +83,7 @@ class Worker:
                 # Start new episode
                 env_obs = self.env.reset() # There is only one agent running, so [0]
                 self.actions.reset()
+                self.agent.policy.reset()
                 reward, obs, episode_end = self.agent.process_observation(env_obs)
 
                 while not episode_end:
@@ -114,7 +115,7 @@ class Worker:
 
                         episode_buffer = [feed[-self.buffer_min:] for feed in episode_buffer]
 
-
+                self.episode_real_rewards[episode_count % per_point] = episode_reward
                 self.episode_rewards[episode_count % per_point] = env_obs[0][1].resources_collected
                 self.episode_lengths[episode_count % per_point] = episode_step_count
                 self.episode_mean_values[episode_count % per_point] = episode_values / episode_step_count
@@ -128,14 +129,18 @@ class Worker:
 
                 print("{:6.0f} Episodes: "
                       "loss = {:13.4f}, "
-                      "accuracy = {:13.4f}, "
-                      "consistency = {:13.4f}, "
-                      "advantage = {:8.4f}, "
+                      "accuracy = {:13.4g}, "
+                      "consistency = {:13.4g}, "
+                      "advantage = {:13.4g}, "
                       "reward = {:8.1f}, "
-                      "minerals = {:8.1f}".format(
+                      "minerals = {:8.1f}, "
+                      "exploring = {:7.4f}".format(
                         np.sum(self.main._episodes), loss, accuracy,
                         consistency, advantage, episode_reward,
-                        env_obs[0][1].resources_collected))
+                        env_obs[0][1].resources_collected,
+                        sess.run(self.agent.policy.exploration,
+                                 feed_dict={self.agent.policy.exploration_rate:
+                                            self.agent.policy.random_explore_rate})))
 
                 # Update the network using the episode buffer at the end of the episode
                 if len(episode_buffer) > self.buffer_min:
@@ -162,11 +167,11 @@ class Worker:
                         print("Saved Model")
 
                     mean_reward = np.mean(self.episode_rewards)
-                    mean_length = np.mean(self.episode_lengths)
+                    mean_real_reward = np.mean(self.episode_real_rewards)
                     mean_value = np.mean(self.episode_mean_values)
                     summary = tf.Summary()
+                    summary.value.add(tag="Perf/RealReward", simple_value=float(mean_real_reward))
                     summary.value.add(tag='Perf/Reward', simple_value=float(mean_reward))
-                    summary.value.add(tag='Perf/Length', simple_value=float(mean_length))
                     summary.value.add(tag='Perf/Value', simple_value=float(mean_value))
                     summary.value.add(tag='Losses/Accuracy', simple_value=float(accuracy))
                     summary.value.add(tag='Losses/Consistency', simple_value=float(consistency))
@@ -176,6 +181,7 @@ class Worker:
                     self.summary_writer.add_summary(summary, episode_count)
 
                     self.summary_writer.flush()
-                if self.name == 'worker_0':
+
+                if self.number == 0:
                     sess.run(self.increment)
 
