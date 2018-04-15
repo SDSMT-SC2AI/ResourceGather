@@ -16,8 +16,8 @@ from hyper_param_search import HyperParams
 
 
 def __main__():
-    seed = 150
-    while seed > 140:
+    seed = 70
+    while seed > 60:
         hp = HyperParams(seed)
         
         try:
