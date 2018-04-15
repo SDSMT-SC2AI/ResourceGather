@@ -1,4 +1,5 @@
 import random
+import sys
 from numpy import random as np
 
 class HyperParams: 
@@ -62,20 +63,28 @@ class HyperParams:
         return random.betavariate(alpha, beta)
 
 
-def main():
-    iter = 0
-    while iter < 10:
-        hp = HyperParams(iter)
-        print("\nTesting Hyperparam Randomization:")
-        print(hp.learning_rate)
-        print(hp.hidden_nodes)
-        print(hp.base_xplr_rate)
-        print(hp.accuracy_coef)
-        print(hp.advantage_coef)
-        print(hp.max_grad_norm)
-        print(hp.discount)
-        print(hp.consist_coef)
-        iter += 1
+def main(start=None):
+    if start == None:    
+        for it in range(0,10):
+            dump_params(it)
+    else:
+        dump_params(start)
+
+
+def dump_params(seed):
+    hp = HyperParams(seed)
+    print("\nTesting Hyperparam Randomization:")
+    print("Learning Rate:", hp.learning_rate)
+    print("Hidden Nodes:", hp.hidden_nodes)
+    print("Explore Rate Base:",hp.base_xplr_rate)
+    print("Accuracy Coeff:", hp.accuracy_coef)
+    print("Advantage Coeff:", hp.advantage_coef)
+    print("Max Grad Norm:", hp.max_grad_norm)
+    print("Discount:", hp.discount)
+    print("Consistency Coeff:", hp.consist_coef)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main(sys.argv[1])
+    except IndexError:
+        main()
