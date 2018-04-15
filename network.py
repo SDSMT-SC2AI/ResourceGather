@@ -18,32 +18,33 @@ class Trainer:
             'discount factor': discount_factor
         }
 
-    def __init__(self, scope, optimizer, policy, trainer_spec):
+    def __init__(self, scope, optimizer, policy, trainer_spec, hyper_params):
         self.policy = policy
+        self.hp = hyper_params
         with tf.variable_scope(scope):
-            a_c, adv_c, c_c, max_grad_norm, gamma = \
-                [trainer_spec[k] for k in ['accuracy coefficient',
-                                           'advantage coefficient',
-                                           'consistency coefficient',
-                                           'max gradient norm', 'discount factor']]
+            # a_c, adv_c, c_c, max_grad_norm, gamma = \
+            #     [trainer_spec[k] for k in ['accuracy coefficient',
+            #                                'advantage coefficient',
+            #                                'consistency coefficient',
+            #                                'max gradient norm', 'discount factor']]
 
             self.actions = tf.placeholder(shape=[None], dtype=tf.int64, name="actions")
             self.rewards = tf.placeholder(shape=[None], dtype=tf.float32)
             self.values = tf.placeholder(shape=[None], dtype=tf.float32)
             q = select_from(policy.q, self.actions)
-            discounted_rewards = discount(self.rewards, gamma, self.values[-1])
+            discounted_rewards = discount(self.rewards, self.hp.discount, self.values[-1])
 
-            self.accuracy_loss = tf.reduce_mean(tf.square(q - discounted_rewards)) * (1 - gamma)
+            self.accuracy_loss = tf.reduce_mean(tf.square(q - discounted_rewards)) * (1 - self.hp.discount)
             self.consistent_loss = tf.reduce_mean(tf.square(q - self.values[1:]))
             self.advantage = tf.reduce_mean(q - tf.reduce_mean(policy.q, axis=1))
-            self.loss = a_c * self.accuracy_loss + c_c * self.consistent_loss - adv_c * self.advantage
+            self.loss = self.hp.accuracy_coef * self.accuracy_loss + self.hp.consist_coef * self.consistent_loss - self.hp.advantage_coef * self.advantage
 
             # Get gradients from local network using local losses
             local_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
             # self.gradients - gradients of loss wrt local_vars
             self.gradients = tf.gradients(self.loss, local_vars)
             self.var_norms = tf.global_norm(local_vars)
-            grads, self.grad_norms = tf.clip_by_global_norm(self.gradients, max_grad_norm)
+            grads, self.grad_norms = tf.clip_by_global_norm(self.gradients, self.hp.max_grad_norm)
 
             # Apply local gradients to global network
             global_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'global')
@@ -87,9 +88,10 @@ class Policy:
             "max_episodes": max_episodes
         }
 
-    def __init__(self, scope, episode, policy_spec):
+    def __init__(self, scope, episode, policy_spec, hyper_params):
+        self.hyper_params = hyper_params
         self.network_spec = policy_spec
-        self.random_explore_rate = np.random.beta(1.5, 6)
+        self.random_explore_rate = np.random.beta(self.hyper_params.alpha, self.hyper_params.beta)
 
         with tf.variable_scope(scope):
             # Define the exploration rate reduction policy
@@ -106,13 +108,25 @@ class Policy:
             hidden1 = tf.contrib.layers.fully_connected(
                 inputs=self.input,
                 num_outputs=policy_spec['hidden_layer_size'],
-                activation_fn=tf.nn.elu,
+                activation_fn=tf.nn.selu,
+                biases_initializer=tf.random_uniform_initializer(-1, 1)
+            )
+            hidden2 = tf.contrib.layers.fully_connected(
+                inputs=hidden1,
+                num_outputs=policy_spec['hidden_layer_size'],
+                activation_fn=tf.nn.selu,
+                biases_initializer=tf.random_uniform_initializer(-1, 1)
+            )
+            hidden3 = tf.contrib.layers.fully_connected(
+                inputs=hidden2,
+                num_outputs=policy_spec['hidden_layer_size'],
+                activation_fn=tf.nn.selu,
                 biases_initializer=tf.random_uniform_initializer(-1, 1)
             )
             # hidden1 = tf.add(hidden1, tf.random_normal(shape=tf.shape(hidden1), stddev=0.1))
 
             self.q = tf.contrib.layers.fully_connected(
-                inputs=hidden1,
+                inputs=hidden3,
                 num_outputs=policy_spec["num_actions"],
                 weights_initializer=tf.orthogonal_initializer(0.1),
                 biases_initializer=tf.random_uniform_initializer(*policy_spec['q_range'])
@@ -127,7 +141,7 @@ class Policy:
             self.value = tf.reduce_sum(self.probs * self.q, axis=1) / tf.reduce_sum(self.probs, axis=1)
 
     def reset(self):
-        self.random_explore_rate = np.random.beta(1.5, 6)
+        self.random_explore_rate = np.random.beta(self.hyper_params.alpha, self.hyper_params.beta)
 
     def step(self, sess, obs):
         return sess.run(fetches=[self.action, self.value],  # returns
