@@ -119,9 +119,6 @@ class Worker:
 
                         episode_buffer = [feed[-self.buffer_min:] for feed in episode_buffer]
 
-                    print("locals: ", locals())
-                    exit()
-
                 self.episode_real_rewards[episode_count % per_point] = episode_reward
                 self.episode_rewards[episode_count % per_point] = env_obs[0][1].resources_collected
                 self.episode_lengths[episode_count % per_point] = episode_step_count

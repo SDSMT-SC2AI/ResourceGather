@@ -10,18 +10,24 @@ policy_spec = network.Policy.policy_spec(input_size=2,
                                          q_range=(30, 31),
                                          max_episodes=2500,
                                          min_explore_rate=0.01)
-trainer_spec = network.Trainer.trainer_spec(accuracy_coefficient=1.0,
-                                            consistency_coefficient=0.1,
-                                            advantage_coefficient=0.1,
-                                            discount_factor=0.99,
-                                            max_grad_norm=50000.0)
+
+# trainer_spec = network.Trainer.trainer_spec(accuracy_coefficient=1.0,
+#                                             consistency_coefficient=0.1,
+#                                             advantage_coefficient=0.1,
+#                                             discount_factor=0.99,
+#                                             max_grad_norm=50000.0)
 
 
 
 class Smart(BaseAgent):
-    def __init__(self, name, parent, optimizer, episode, action_space):
+    def __init__(self, name, parent, optimizer, episode, action_space, hyper_params):
         policy_spec.update(action_space.action_spec)
-        super().__init__(name, parent, optimizer, network, episode, policy_spec, trainer_spec)
+        trainer_spec = network.Trainer.trainer_spec(accuracy_coefficient=hyper_params.accuracy_coef,
+                                                    consistency_coefficient=0.1,
+                                                    advantage_coefficient=hyper_params.advantage_coef,
+                                                    discount_factor=hyper_params.discount,
+                                                    max_grad_norm=hyper_params.max_grad_norm)
+        super().__init__(name, parent, optimizer, network, episode, policy_spec, trainer_spec, hyper_params)
         self.action_space = action_space
 
     def process_observation(self, obs):

@@ -2,9 +2,9 @@ from common.helper_functions import update_target_graph
 
 
 class BaseAgent:
-    def __init__(self, name, parent, optimizer, network, episode, policy_spec, trainer_spec):
-        self.policy = network.Policy(name, episode, policy_spec)
-        self.trainer = network.Trainer(name, optimizer, self.policy, trainer_spec)
+    def __init__(self, name, parent, optimizer, network, episode, policy_spec, trainer_spec, hyper_params):
+        self.policy = network.Policy(name, episode, policy_spec, hyper_params)
+        self.trainer = network.Trainer(name, optimizer, self.policy, trainer_spec, hyper_params)
         self.update_local_policy = update_target_graph(parent, name)
 
     def train(self, sess, actions, rewards, observations, values):
