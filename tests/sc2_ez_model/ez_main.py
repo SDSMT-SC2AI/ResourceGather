@@ -16,8 +16,8 @@ from hyper_param_search import HyperParams
 
 
 def __main__():
-    seed = 99999
-    while seed > 99991:
+    seed = 99998
+    while seed > 9999:
         hp = HyperParams(seed)
         
         try:

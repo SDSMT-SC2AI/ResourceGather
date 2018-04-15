@@ -63,11 +63,6 @@ class HyperParams:
 
 def main():
     hp = HyperParams(None)
-    # seed = 100000
-    # while seed > 99992:
-    #     hp = HyperParams(seed)
-    #     bm = BM.BaseMain()
-    #     seed -= 1
 
 if __name__ == "__main__":
     main()
