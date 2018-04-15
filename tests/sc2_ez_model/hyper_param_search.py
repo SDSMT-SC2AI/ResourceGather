@@ -5,25 +5,26 @@ class HyperParams:
     def __init__(self, seed=None):
         """Fills all self variables in self.params. Sets seed member so it can be appended to workerData folder"""        
         random.seed(seed)        
-        self.params = { 'learning_rate_min' : 0.00001,
-                        'learning_rate_max' : 0.01,
-                        'h_nodes_layer_min' : 21,
-                        'h_nodes_layer_max' : 61,
-                        'base_explr_min'    : 0.40,
-                        'base_explr_max'    : 0.99,
-                        # 'rand_explr_A_min'  : 1.0,
-                        # 'rand_explr_A_max'  : 4.0,
-                        # 'rand_explr_B_min'  : 4.0,
-                        # 'rand_explr_B_max'  : 10.0,
-                        'acc_coef_min'      : 1.0,
-                        'acc_coef_max'      : 10.0,
-                        'advantage_coef_min' : 1.0,
-                        'advantage_coef_max' : 10.0,
-                        'max_grad_norm_min' : 1.0,
-                        'max_grad_norm_max' : 40.0,
-                        'discount_min'      : 0.9,
-                        'discount_max'      : 1.0,
-                        'consistency_coef'  : 0.1
+        self.params = { 'learning_rate_min'     : 0.00001,
+                        'learning_rate_max'     : 0.01,
+                        'h_nodes_layer_min'     : 21,
+                        'h_nodes_layer_max'     : 61,
+                        'base_explr_min'        : 0.40,
+                        'base_explr_max'        : 0.99,
+                        'rand_explr_A_min'      : 1.0,
+                        'rand_explr_A_max'      : 4.0,
+                        'rand_explr_B_min'      : 4.0,
+                        'rand_explr_B_max'      : 10.0,
+                        'acc_coef_min'          : 1.0,
+                        'acc_coef_max'          : 10.0,
+                        'advantage_coef_min'    : 1.0,
+                        'advantage_coef_max'    : 10.0,
+                        'max_grad_norm_min'     : 1.0,
+                        'max_grad_norm_max'     : 40.0,
+                        'discount_min'          : 0.9,
+                        'discount_max'          : 1.0,
+                        'consistency_coef_min'  : 0.1,
+                        'consistency_coef_max'  : 0.1
                       }
 
         # Set hyperparams
@@ -38,7 +39,7 @@ class HyperParams:
         self.advantage_coef = self.get_uniform_value(self.params['advantage_coef_min'], self.params['advantage_coef_max'])
         self.max_grad_norm = self.get_uniform_value(self.params['max_grad_norm_min'], self.params['max_grad_norm_max'])
         self.discount = self.get_uniform_value(self.params['discount_min'], self.params['discount_max'])
-        self.consist_coef = self.params['consistency_coef']
+        self.consist_coef = self.get_uniform_value(self.params['consistency_coef_min'], self.params['consistency_coef_max'])
 
         # Append this to workerData folder so we know which seed obtained which results
         self.seed = seed
