@@ -2,6 +2,9 @@ from common.helper_functions import update_target_graph
 
 
 class BaseAgent:
+    policy_cls = None
+    trainer_cls = None
+
     def __init__(self, name, parent, optimizer, network_kwargs, trainer_kwargs):
         self.policy = self.setup_policy(name, **network_kwargs)
         self.trainer = self.setup_trainer(name, parent, optimizer, self.policy, **trainer_kwargs)
@@ -17,13 +20,13 @@ class BaseAgent:
     def value(self, sess, obs):
         return self.policy.get_value(sess, obs)[0]
 
-    def setup_policy(self, name, input_size, num_actions, **_):
-        raise NotImplementedError("Need to define how the network is constructed.\n"
-                                  "Signature: setup_policy(self, name, input_size, num_actions) -> policy: BasePolicy")
+    @classmethod
+    def setup_policy(cls, name, input_size, num_actions, **policy_kwargs):
+        return cls.policy_cls(name, input_size, num_actions, **policy_kwargs)
 
-    def setup_trainer(self, name, parent, optimizer, policy, **_):
-        raise NotImplementedError("Need to define how the network is constructed.\n"
-                                  "Signature: setup_trainer(self, name, optimizer, policy) -> trainer: BaseTrainer")
+    @classmethod
+    def setup_trainer(cls, name, parent, optimizer, policy, **trainer_kwargs):
+        return cls.trainer_cls(name, parent, optimizer, policy, **trainer_kwargs)
 
     def update_policy(self, sess):
         sess.run(self.update_local_policy)
