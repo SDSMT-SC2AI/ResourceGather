@@ -1,13 +1,12 @@
 import psutil
-import os
 from os.path import abspath, join, dirname
+from datetime import datetime
 import sys
 import threading
 import numpy as np
 import tensorflow as tf
 from time import sleep
 sys.path.insert(0, abspath(join(dirname(__file__), "../..")))
-import network
 from worker import Worker
 from tests.sc2_ez_model.environment.model import IdealizedSC2Env
 import tests.sc2_ez_model.ez_agent as agent
@@ -15,11 +14,12 @@ import tests.sc2_ez_model.ez_actions as actions
 
 
 def __main__():
-    run_id = sys.argv[1]
+    try:
+        run_id = sys.argv[1]
+    except IndexError:
+        run_id = "test_" + datetime.now().strftime("%Y%m%d%H%M%S")
     print("Running", run_id)
-    max_episode_length = 720
     load_model = False
-    model_path = './model'
 
     agent_cls = agent.Smart
 
@@ -32,9 +32,6 @@ def __main__():
             base_explore_rate=0.2,
             min_explore_rate=0.002
         )
-
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
 
     tf.reset_default_graph()
     config = tf.ConfigProto(allow_soft_placement=True)
@@ -56,6 +53,7 @@ def __main__():
         for i in range(num_workers):
             name = "worker_" + str(i) + run_id
             agent_inst = agent_cls(name, 'global', optimizer, global_episodes, actions.Action_Space())
+            print('Initializing environment #{}...'.format(i))
             env = IdealizedSC2Env(
                     game_loops_per_agent_step=5,
                     time_limit=720, 
@@ -64,13 +62,11 @@ def __main__():
             )
             workers.append(
                 Worker(
-                    name=name,
                     number=i,
                     main=sys.modules[__name__],
                     env=env,
                     actions=actions.Action_Space(),
                     agent=agent_inst,
-                    model_path=model_path,
                     global_episodes=global_episodes,
                     buffer_min=480,
                     buffer_max=720,
@@ -83,14 +79,14 @@ def __main__():
         coord = tf.train.Coordinator()
         if load_model:
             print("Loading Model...")
-            ckpt = tf.train.get_checkpoint_state(model_path)
+            ckpt = tf.train.get_checkpoint_state("workerData/model")
             saver.restore(sess, ckpt.model_checkpoint_path)
         else:
             sess.run(tf.global_variables_initializer())
 
         worker_threads = []
         for worker in workers:
-            t = threading.Thread(target=(lambda: worker.work(max_episode_length, sess, coord, saver)))
+            t = threading.Thread(target=(lambda: worker.work(sess, coord, saver)))
             t.start()
             sleep(0.25)
             worker_threads.append(t)

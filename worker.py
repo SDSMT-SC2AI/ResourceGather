@@ -1,35 +1,39 @@
 import tensorflow as tf
 import numpy as np
+from common.parse_args import ensure_dir
 
 mse = tf.losses.mean_squared_error
 per_point = 10
 
+
 class Worker:
-    def __init__(self, name, number,
-                 main, env, actions, agent,
-                 model_path, global_episodes,
+    def __init__(self, number, main, env, actions, agent, global_episodes, *,
+                 # keyword args
+                 name=None, model_path=None, summary_dir="workerData/",
+                 episodes_per_record=10, episodes_for_model_checkpoint=250,
                  buffer_min=10, buffer_max=30, max_episodes=10000):
-        self.name = name
         self.number = number
-        self.model_path = model_path
+        self.name = name or "worker_" + str(number)
+
+        self.model_path = model_path or summary_dir + "model"
+        ensure_dir(summary_dir)
+        ensure_dir(self.model_path)
+
         self.buffer_min = buffer_min
         self.buffer_max = buffer_max
         self.global_episodes = global_episodes
         self.increment = self.global_episodes.assign_add(1)
-        self.episode_rewards = np.zeros(10)
-        self.episode_real_rewards = np.zeros(10)
-        self.episode_lengths = np.zeros(10)
-        self.episode_mean_values = np.zeros(10)
+        self.episodes_for_model_checkpoint = episodes_for_model_checkpoint
+        self.episodes_per_record = episodes_per_record
+        self.episode_rewards = np.zeros(episodes_per_record)
+        self.episode_real_rewards = np.zeros(episodes_per_record)
+        self.episode_lengths = np.zeros(episodes_per_record)
+        self.episode_mean_values = np.zeros(episodes_per_record)
         self.max_episodes = max_episodes
-        self.summary_writer = tf.summary.FileWriter("workerData/" + self.name)
+        self.summary_writer = tf.summary.FileWriter(summary_dir + self.name)
         self.main = main
-        self.log = []
-
-        # Create the local copy of the agent which inherits the global network parameters
         self.agent = agent
         self.actions = actions
-
-        print('Initializing environment #{}...'.format(self.number))
         self.env = env
 
     def train(self, rollout, sess, bootstrap_value):
@@ -64,7 +68,7 @@ class Worker:
 
         return feed_back, env_obs
 
-    def work(self, max_episode_length, sess, coord, saver):
+    def work(self, sess, coord, saver):
         episode_count = sess.run(self.global_episodes)
         total_steps = 0
         print("Starting worker " + str(self.number))
@@ -102,7 +106,7 @@ class Worker:
                     if episode_end:
                         break
 
-                    if len(episode_buffer[0]) == self.buffer_max and episode_step_count != max_episode_length - 1:
+                    if len(episode_buffer[0]) == self.buffer_max:
                         buffer_dumps += 1
                         bootstrap = self.agent.value(sess, obs)
                         v = self.train(episode_buffer, sess, bootstrap)
@@ -114,6 +118,9 @@ class Worker:
                         var_norms += v[5]
 
                         episode_buffer = [feed[-self.buffer_min:] for feed in episode_buffer]
+
+                    print("locals: ", locals())
+                    exit()
 
                 self.episode_real_rewards[episode_count % per_point] = episode_reward
                 self.episode_rewards[episode_count % per_point] = env_obs[0][1].resources_collected
@@ -161,8 +168,8 @@ class Worker:
                 gradient_norms /= buffer_dumps
                 var_norms /= buffer_dumps
 
-                if episode_count % per_point == 0 and episode_count != 0:
-                    if episode_count % 250 == 0 and self.name == 'worker_0':
+                if episode_count % self.episodes_per_record == 0:
+                    if episode_count % self.episodes_for_model_checkpoint == 0 and self.name == 'worker_0':
                         saver.save(sess, self.model_path + '/model-' + str(episode_count) + '.cptk')
                         print("Saved Model")
 
@@ -184,4 +191,5 @@ class Worker:
 
                 if self.number == 0:
                     sess.run(self.increment)
+                    tf.contrib.layers.summarize_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
 
