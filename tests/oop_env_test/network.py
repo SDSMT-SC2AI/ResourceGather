@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from .context import set_path
+from context import set_path
 set_path()
 from a3c.base_network import BasePolicy, BaseTrainer
 
@@ -52,7 +52,7 @@ class Policy(BasePolicy):
         )
         # hidden1 = tf.add(hidden1, tf.random_normal(shape=tf.shape(hidden1), stddev=0.1))
 
-        self.q = tf.contrib.layers.fully_connected(
+        return tf.contrib.layers.fully_connected(
             inputs=hidden1,
             num_outputs=num_actions,
             weights_initializer=tf.orthogonal_initializer(0.1),
@@ -65,10 +65,10 @@ class Policy(BasePolicy):
         adjust = tf.minimum(1.0, tf.cast(self.episode, dtype=tf.float32) /
                             tf.cast(self.max_episodes, dtype=tf.float32))
         factor = (1 - adjust) * self.max_explore_rate + adjust * self.min_explore_rate
-        return tf.mul(self.base_exploration_rate, factor, name="ExplorationRate")
+        return tf.multiply(self.base_exploration_rate, factor, name="ExplorationRate")
 
     @staticmethod
-    def policy_kwargs(input_size, num_actions, q_range=(10, 10.01), hidden_layer_size=None,
+    def policy_kwargs(input_size, num_actions, episode=None, q_range=(10, 10.01), hidden_layer_size=None,
                       rate_policy_alpha=1.25, rate_policy_beta=5.65,
                       max_explore_rate=0.1, min_explore_rate=0.001, max_episodes=10000):
         return locals()

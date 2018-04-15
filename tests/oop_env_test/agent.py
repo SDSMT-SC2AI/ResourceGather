@@ -1,23 +1,30 @@
 import numpy as np
-from .network import Policy, Trainer
-from .context import set_path
+from context import set_path
 set_path()
 from a3c.base_agent import BaseAgent
+from tests.oop_env_test.network import Policy, Trainer
 
 
 class Simple(BaseAgent):
+    policy_cls = Policy
+    trainer_cls = Trainer
+
     def __init__(self, name, parent, optimizer, policy_kwargs, trainer_kwargs):
         super().__init__(name, parent, optimizer, policy_kwargs, trainer_kwargs)
 
-    def setup_policy(self, name, input_size, num_actions, **policy_kwargs):
-        return Policy(name, input_size, num_actions, **policy_kwargs)
-
-    def setup_trainer(self, name, parent, optimizer, policy, **trainer_kwargs):
-        return Trainer(name, parent, optimizer, policy, **trainer_kwargs)
-
     def process_observation(self, obs):
-        reward = obs[0][0]
-        n_steps = obs[0][1]
-        ends = obs[0][2]
+        env_obs, feed_back = obs
+        reward, n_steps, ends = env_obs[0]
         net_in = np.array([[(n_steps // 3) % 3, n_steps % 3]])
-        return reward, net_in, ends
+        return reward + feed_back, net_in, ends
+
+    @classmethod
+    def policy_kwargs(cls, num_actions, episode, **kwargs):
+        return cls.policy_cls.policy_kwargs(
+            input_size=2,
+            num_actions=num_actions,
+            episode=episode, **kwargs)
+
+    @classmethod
+    def trainer_kwargs(cls, **kwargs):
+        return cls.trainer_cls.trainer_kwargs(**kwargs)

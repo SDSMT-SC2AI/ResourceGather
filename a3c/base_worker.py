@@ -12,9 +12,9 @@ class BaseWorker:
                  name=None, model_path=None, summary_dir="workerData/",
                  episodes_per_record=10, episodes_for_model_checkpoint=250,
                  buffer_min=10, buffer_max=30, max_episodes=10000, logging_callback=None,
-                 tensorboard_callback=None):
+                 tensorboard_callback=None, should_stop=lambda **_: None):
         self.number = number
-        self.name = (name or "worker_") + number
+        self.name = (name or "worker_") + str(number)
 
         # Create a directory for model checkpoints and tensorboard summaries
         self.model_path = model_path or summary_dir + "model"
@@ -46,10 +46,17 @@ class BaseWorker:
         # Tensorboard callback
         self.tensorboard_callback = tensorboard_callback or self.default_tensorboard_callback
 
+        # Should Stop callback
+        self.should_stop = should_stop
+
         # Set variables for important components
         self.main = main
         self.agent = agent
         self.env = env
+
+    # Initialization routine
+    def initialize(self, *_):
+        pass
 
     # Prepare worker for a new episode returns env_obs
     def reset(self):
@@ -65,7 +72,7 @@ class BaseWorker:
         values = np.array(rollout[3] + [bootstrap_value])
 
         loss, accuracy, consistency, advantage, grad_norms, var_norms = \
-            self.agent.train(sess, actions, rewards, observations, values)
+            self.agent.train(sess, actions, observations, rewards, values)
         self.agent.update_policy(sess)
         
         return loss, \
@@ -76,7 +83,7 @@ class BaseWorker:
             var_norms
 
     # This function is used to execute actions in the environment
-    def do_actions(self, choice):
+    def do_actions(self, choice, caller_vars):
         raise NotImplementedError("Need to define a function that takes an integer choice, and "
                                   "returns an observation from the environment.\n"
                                   "Signature: do_actions(self, choice) -> env_obs")
@@ -107,9 +114,9 @@ class BaseWorker:
                 reward, obs, episode_end = self.agent.process_observation(env_obs)
 
                 # loop until episode is complete
-                while not episode_end:
+                while not episode_end and not self.should_stop(**locals()):
                     choice, value = self.agent.step(sess, obs) 
-                    env_obs = self.do_actions(choice)
+                    env_obs = self.do_actions(choice, locals())
                     reward, obs, episode_end = self.agent.process_observation(env_obs)
 
                     for i, v in enumerate([choice, reward, obs, value]):

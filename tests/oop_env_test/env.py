@@ -15,7 +15,7 @@ class SimpleEnv:
     def step(self, actions):
         self.episode_step += 1
         reward = self.get_reward(actions[0]**2)
-        return [[reward, self.episode_step, self.episode_step > 100], ]
+        return [[reward, self.episode_step, False], ]
 
     def get_reward(self, value):
         return self.r_func(value)

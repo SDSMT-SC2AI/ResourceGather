@@ -17,7 +17,7 @@ class BaseTrainer:
                 discounted_rewards = discount(self.rewards, discount_rate, self.values[-1])
 
                 # Compute losses
-                self.accuracy_loss = tf.mul(
+                self.accuracy_loss = tf.multiply(
                     (1 - discount_rate),
                     tf.reduce_mean(tf.square(
                         tf.nn.leaky_relu(discounted_rewards - q, advantage_nerf)
@@ -104,7 +104,7 @@ class BasePolicy:
         p_best = 1 - self.exploration_rate
         p_other = self.exploration_rate / tf.cast(tf.shape(self.q)[-1], dtype=tf.float32)
         probs = tf.add(tf.one_hot(best, tf.shape(self.q)[-1], dtype=tf.float32) * p_best, p_other, name="ActionProbs")
-        action = tf.reshape(tf.multinomial(tf.log(self.probs), 1), [-1], name="SelectedAction")
+        action = tf.reshape(tf.multinomial(tf.log(probs), 1), [-1], name="SelectedAction")
         return probs, action
 
     def step(self, sess, obs):
