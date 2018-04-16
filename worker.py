@@ -3,7 +3,6 @@ import numpy as np
 from common.parse_args import ensure_dir
 
 mse = tf.losses.mean_squared_error
-per_point = 10
 
 
 class Worker:
@@ -13,7 +12,7 @@ class Worker:
                  episodes_per_record=10, episodes_for_model_checkpoint=250,
                  buffer_min=10, buffer_max=30, max_episodes=10000):
         self.number = number
-        self.name = name or "worker_" + str(number)
+        self.name = (name or "worker_") + str(number)
 
         self.model_path = model_path or summary_dir + "model"
         ensure_dir(summary_dir)
@@ -69,6 +68,10 @@ class Worker:
         return feed_back, env_obs
 
     def work(self, sess, coord, saver):
+        self.summary_writer.add_graph(sess.graph)
+        checkpoint_steps = 0
+
+        per_point = self.episodes_per_record
         episode_count = sess.run(self.global_episodes)
         self.summary_writer.add_graph(sess.graph)
         total_steps = 0
@@ -101,7 +104,6 @@ class Worker:
 
                     episode_values += value
                     episode_reward += reward + feedback
-                    total_steps += 1
                     episode_step_count += 1
 
                     if episode_end:
@@ -126,11 +128,7 @@ class Worker:
                 self.episode_mean_values[episode_count % per_point] = episode_values / episode_step_count
                 episode_count += 1
 
-                if self.main._max_score < episode_reward:
-                    self.main._max_score = episode_reward
-                self.main._running_avg_score = (2.0 / 101) * (episode_reward - self.main._running_avg_score) + self.main._running_avg_score
                 self.main._episodes[self.number] = episode_count
-                self.main._steps[self.number] = total_steps
 
                 print("{:6.0f} Episodes: "
                       "loss = {:13.4f}, "
@@ -138,14 +136,10 @@ class Worker:
                       "consistency = {:13.4g}, "
                       "advantage = {:13.4g}, "
                       "reward = {:8.1f}, "
-                      "minerals = {:8.1f}, "
-                      "exploring = {:7.4f}".format(
+                      "minerals = {:8.1f}, ".format(
                         np.sum(self.main._episodes), loss, accuracy,
                         consistency, advantage, episode_reward,
-                        env_obs[0][1].resources_collected,
-                        sess.run(self.agent.policy.exploration,
-                                 feed_dict={self.agent.policy.exploration_rate:
-                                            self.agent.policy.random_explore_rate})))
+                        env_obs[0][1].resources_collected))
 
                 # Update the network using the episode buffer at the end of the episode
                 if len(episode_buffer) > self.buffer_min:
@@ -166,11 +160,7 @@ class Worker:
                 gradient_norms /= buffer_dumps
                 var_norms /= buffer_dumps
 
-                if episode_count % self.episodes_per_record == 0:
-                    if episode_count % self.episodes_for_model_checkpoint == 0 and self.name == 'worker_0':
-                        saver.save(sess, self.model_path + '/model-' + str(episode_count) + '.cptk')
-                        print("Saved Model")
-
+                if episode_count % per_point == 0:
                     mean_reward = np.mean(self.episode_rewards)
                     mean_real_reward = np.mean(self.episode_real_rewards)
                     mean_value = np.mean(self.episode_mean_values)
@@ -184,9 +174,12 @@ class Worker:
                     summary.value.add(tag='Losses/Grad Norm', simple_value=float(gradient_norms))
                     summary.value.add(tag='Losses/Var Norm', simple_value=float(var_norms))
                     self.summary_writer.add_summary(summary, episode_count)
-
                     self.summary_writer.flush()
 
                 if self.number == 0:
-                    sess.run(self.increment)
-                    
+                    if checkpoint_steps >= self.episodes_for_model_checkpoint:
+                        checkpoint_steps = 0
+                        saver.save(sess, self.model_path + '/model-' + str(episode_count) + '.cptk')
+                        print("Saved Model")
+                    else:
+                        checkpoint_steps += 1

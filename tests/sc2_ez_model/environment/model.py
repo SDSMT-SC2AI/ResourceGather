@@ -55,9 +55,6 @@ class IdealizedSC2Env:
 
         # State information
         self.base_index = 0
-        self.bases = [Base(self)]
-        self.bases[0].minerals.drones = 12
-        self.focus = self.bases[0]
         self.target = None
         self.clock_rate = 0.1
         self.overlords = 1
@@ -67,8 +64,10 @@ class IdealizedSC2Env:
         self.gas = 0
         self.resources_collected = 0
         self.resource_collection_rate = 0
-        self.log = []
         self.reward = 0
+        self.bases = [Base(self)]
+        self.bases[0].minerals.drones = 12
+        self.focus = self.bases[0]
 
         # returns reward, observation, and game_end flag
         return [[self.reward, self, False], ]
@@ -80,16 +79,14 @@ class IdealizedSC2Env:
                 self.actions_in_progress.add(a(self))
             except ActionError as e:
                 valid_action = False
-                if self.silent_errors:
-                    self.log.append(e)
-                else:
-                    raise e
 
         for _ in range(self.game_loops_per_agent_step):
             self.tick()
 
         self.reward = self.resource_collection_rate
         if not valid_action:
+            print("THIS SHOULD NEVER HAPPEN")
+            exit()
             self.reward -= 1000
 
         return [[self.reward, self, self.time_elapsed > self.time_limit], ]
@@ -114,20 +111,20 @@ class IdealizedSC2Env:
 
     @property
     def drones(self):
-        drones = 0
+        drones_count = 0
         for base in self.bases:
-            drones += base.unassigned_drones
-            drones += base.minerals.drones
-            drones += base.geyserA.drones
-            drones += base.geyserB.drones
-        return drones
+            drones_count += base.unassigned_drones
+            drones_count += base.minerals.drones
+            drones_count += base.geyserA.drones
+            drones_count += base.geyserB.drones
+        return drones_count
 
     @property
     def queens(self):
-        queens = 0
+        queens_count = 0
         for base in self.bases:
-            queens += base.queens
-        return queens
+            queens_count += base.queens
+        return queens_count
 
     @property
     def number_bases(self):
@@ -135,34 +132,34 @@ class IdealizedSC2Env:
 
     @property
     def larva(self):
-        larva = 0
+        larva_count = 0
         for base in self.bases:
-            larva += int(base.larva)
-        return larva
+            larva_count += int(base.larva)
+        return larva_count
 
     @property
     def supply(self):
-        supply = 8 * self.overlords
+        supply_count = 8 * self.overlords
         used = 0
         for base in self.bases:
-            supply += 6
+            supply_count += 6
             used += base.unassigned_drones + base.drones_queued
             used += base.minerals.drones + base.geyserA.drones + base.geyserB.drones
             used += 2*base.queens + 2*base.queens_queued
 
-        supply = min(200, supply)
-        return used, supply
+        supply_count = min(200, supply_count)
+        return used, supply_count
 
     @property
     def available_actions(self):
-        available_actions = set()
+        available_action_set = set()
         for act in self.actions:
             try:
                 act.verify(self)
-                available_actions.add(act)
+                available_action_set.add(act)
             except ActionError:
                 pass
-        return available_actions
+        return available_action_set
 
     def __str__(self):
         s = summary_fmt.format(env=self)
