@@ -25,7 +25,7 @@ class Trainer(BaseTrainer):
 
 class Policy(BasePolicy):
     def __init__(self, scope, input_size, num_actions, episode, *,
-                 q_range=(10,10.01), hidden_layer_size=None,
+                 q_range=(10, 10.01), hidden_layer_size=None,
                  rate_policy_alpha=1.25, rate_policy_beta=5.65,
                  max_explore_rate=0.1, min_explore_rate=0.001, max_episodes=10000):
         self.alpha = rate_policy_alpha

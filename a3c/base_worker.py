@@ -159,7 +159,6 @@ class BaseWorker:
                         saver.save(sess, self.model_path + '/model-' + str(self.episode_count) + '.cptk')
                         print("Saved Model")
                     sess.run(self.increment)
-                    tf.contrib.layers.summarize_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
 
     # called immediately after the completion of an episode, parent method MUST be called for inheriting classes
     def on_episode_end(self, caller_vars):
@@ -207,7 +206,8 @@ class BaseWorker:
                 consistency, advantage, episode_reward))
 
     @staticmethod
-    def default_tensorboard_callback(self, accuracy, consistency, advantage, gradient_norms, var_norms, **_):
+    def default_tensorboard_callback(self, accuracy, consistency, advantage,
+                                     gradient_norms, var_norms, **_):
         mean_reward = np.mean(self.episode_rewards)
         var_reward = np.var(self.episode_rewards)
         mean_value = np.mean(self.episode_mean_values)

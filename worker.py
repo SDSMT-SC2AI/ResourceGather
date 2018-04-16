@@ -161,6 +161,10 @@ class Worker:
                 var_norms /= buffer_dumps
 
                 if episode_count % per_point == 0:
+                    if self.number == 0:
+                        summary_eh = tf.contrib.layers.summarize_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+                        self.summary_writer.add_summary(summary_eh, episode_count)
+
                     mean_reward = np.mean(self.episode_rewards)
                     mean_real_reward = np.mean(self.episode_real_rewards)
                     mean_value = np.mean(self.episode_mean_values)
@@ -183,3 +187,6 @@ class Worker:
                         print("Saved Model")
                     else:
                         checkpoint_steps += 1
+                        
+                    sess.run(self.increment)
+

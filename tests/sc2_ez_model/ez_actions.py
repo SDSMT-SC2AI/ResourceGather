@@ -55,7 +55,6 @@ class Action_Space:
         for base in obs.bases:
             obs.focus = base
             if BuildOverlord in obs.available_actions:
-                self.actionq.append(lambda env: Select(env, base))
                 self.actionq.append(lambda env: BuildOverlord(env))
                 used, available = obs.supply
                 return used - available
@@ -69,7 +68,6 @@ class Action_Space:
             if base.minerals.drones > 1:
                 obs.focus = base.minerals
                 if BuildBase in obs.available_actions:
-                    self.actionq.append(lambda env: Select(env, base.minerals))
                     self.actionq.append(lambda env: BuildBase(env))
                     self.base_count += 1
                     return 0
@@ -80,7 +78,6 @@ class Action_Space:
             if base.larva >= 1:
                 obs.focus = base
                 if BuildDrone in obs.available_actions:
-                    self.actionq.append(lambda env: Select(env, base))
                     self.actionq.append(lambda env: BuildDrone(env))
                     return base.minerals.equiv_max - base.minerals.drones
         return -10
@@ -90,7 +87,6 @@ class Action_Space:
             if base.minerals.drones > 1:
                 obs.focus = base.minerals
                 if BuildSpawningPool in obs.available_actions:
-                    self.actionq.append(lambda env: Select(env, base.minerals))
                     self.actionq.append(lambda env: BuildSpawningPool(env))
                     return 0
         return -10
@@ -101,7 +97,6 @@ class Action_Space:
                 if obs.spawning_pool:
                     obs.focus = base
                     if BuildQueen in obs.available_actions:
-                        self.actionq.append(lambda env: Select(env, base))
                         self.actionq.append(lambda env: BuildQueen(env))
                         return 0
                 else:
@@ -112,7 +107,6 @@ class Action_Space:
         for base in obs.bases:
             obs.focus = base
             if InjectLarva in obs.available_actions:
-                self.actionq.append(lambda env: Select(env, base))
                 self.actionq.append(lambda env: InjectLarva(env))
                 return 0
         return -10
