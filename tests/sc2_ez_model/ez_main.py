@@ -40,7 +40,7 @@ def __main__():
             )
 
         tf.reset_default_graph()
-        config = tf.ConfigProto(allow_soft_placement=True)
+        #config = tf.ConfigProto(allow_soft_placement=True)
 
         with tf.device("/cpu:0"):
             global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
@@ -82,7 +82,7 @@ def __main__():
                 )
             saver = tf.train.Saver(max_to_keep=5)
 
-        with tf.Session(config=config) as sess:
+        with tf.Session() as sess:
             coord = tf.train.Coordinator()
             if load_model:
                 print("Loading Model...")
