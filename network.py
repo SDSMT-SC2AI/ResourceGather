@@ -22,12 +22,6 @@ class Trainer:
         self.policy = policy
         self.hp = hyper_params
         with tf.variable_scope(scope):
-            # a_c, adv_c, c_c, max_grad_norm, gamma = \
-            #     [trainer_spec[k] for k in ['accuracy coefficient',
-            #                                'advantage coefficient',
-            #                                'consistency coefficient',
-            #                                'max gradient norm', 'discount factor']]
-
             self.actions = tf.placeholder(shape=[None], dtype=tf.int64, name="actions")
             self.rewards = tf.placeholder(shape=[None], dtype=tf.float32)
             self.values = tf.placeholder(shape=[None], dtype=tf.float32)
@@ -123,8 +117,6 @@ class Policy:
                 activation_fn=tf.nn.selu,
                 biases_initializer=tf.random_uniform_initializer(-1, 1)
             )
-            # hidden1 = tf.add(hidden1, tf.random_normal(shape=tf.shape(hidden1), stddev=0.1))
-
             self.q = tf.contrib.layers.fully_connected(
                 inputs=hidden3,
                 num_outputs=policy_spec["num_actions"],

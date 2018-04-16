@@ -70,6 +70,7 @@ class Worker:
 
     def work(self, sess, coord, saver):
         episode_count = sess.run(self.global_episodes)
+        self.summary_writer.add_graph(sess.graph)
         total_steps = 0
         print("Starting worker " + str(self.number))
         with sess.as_default(), sess.graph.as_default():
@@ -188,5 +189,4 @@ class Worker:
 
                 if self.number == 0:
                     sess.run(self.increment)
-                    tf.contrib.layers.summarize_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-
+                    

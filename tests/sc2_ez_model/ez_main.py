@@ -16,10 +16,11 @@ from hyper_param_search import HyperParams
 
 
 def __main__():
-    seed = 150
-    while seed > 140:
+    seed = 'harharhar'
+    while seed == 'harharhar':
         hp = HyperParams(seed)
-        
+        tf.reset_default_graph()   
+
         try:
             run_id = sys.argv[1]
         except IndexError:
@@ -32,7 +33,7 @@ def __main__():
         agent.policy_spec.update(      
                 input_size=12,
                 num_actions=len(actions.Action_Space.choices),
-                max_episodes=10000,
+                max_episodes=1000000,
                 q_range=(10, 10.01),
                 hidden_layer_size=hp.hidden_nodes,
                 base_explore_rate=hp.base_xplr_rate,
@@ -77,7 +78,7 @@ def __main__():
                         global_episodes=global_episodes,
                         buffer_min=480,
                         buffer_max=720,
-                        max_episodes=1250
+                        max_episodes=125000
                     )
                 )
             saver = tf.train.Saver(max_to_keep=5)
@@ -95,10 +96,10 @@ def __main__():
             for worker in workers:
                 t = threading.Thread(target=(lambda: worker.work(sess, coord, saver)))
                 t.start()
-                sleep(0.25)
+                sleep(0.05)
                 worker_threads.append(t)
             coord.join(worker_threads)
-        seed -= 1
+        seed = 'hahaha'
 
 if __name__ == "__main__":
     __main__()
