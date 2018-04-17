@@ -68,7 +68,9 @@ class Worker:
         return feed_back, env_obs
 
     def work(self, sess, coord, saver):
-        self.summary_writer.add_graph(sess.graph)
+        if self.number == 0:
+            self.summary_writer.add_graph(sess.graph)
+
         checkpoint_steps = 0
 
         per_point = self.episodes_per_record
@@ -161,10 +163,6 @@ class Worker:
                 var_norms /= buffer_dumps
 
                 if episode_count % per_point == 0:
-                    if self.number == 0:
-                        summary_eh = tf.contrib.layers.summarize_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-                        self.summary_writer.add_summary(summary_eh, episode_count)
-
                     mean_reward = np.mean(self.episode_rewards)
                     mean_real_reward = np.mean(self.episode_real_rewards)
                     mean_value = np.mean(self.episode_mean_values)
@@ -181,7 +179,7 @@ class Worker:
                     self.summary_writer.flush()
 
                 if self.number == 0:
-                    if checkpoint_steps >= self.episodes_for_model_checkpoint:
+                    if checkpoint_steps > self.episodes_for_model_checkpoint:
                         checkpoint_steps = 0
                         saver.save(sess, self.model_path + '/model-' + str(episode_count) + '.cptk')
                         print("Saved Model")
