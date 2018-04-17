@@ -4,15 +4,18 @@ This project implements an A3C reinforcement learning agent to build bases and g
 using a restricted action space. The project fulfills the requirements of Senior Design (CSC465) at South Dakota School of Mines
 and Technology.
 
+![custom map](https://raw.githubusercontent/SDSMT-SC2AI/ResourceGather/images/DistanceMap.bmp)
+
 ## Dependencies
 
 This project requires the following python libraries:
-
-- pysc2 
+<script> alert("wat") </script>
+- pysc2 (use our clone at linkme)
 - numpy
 - tensorflow
 
-## Running the Model Enviornment
+
+## Running the Model SC2 Resource Gathering Enviornment
 
 The test is located in the following folder inside the project directory:
 
@@ -54,7 +57,7 @@ optional arguments:
 
 ## Running the Project
 
-**The main project code will not work in it's current state
+**The main project code will not work in it's current state**
 To train the Pysc2 Resource Gatherer run
 
 

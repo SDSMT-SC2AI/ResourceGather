@@ -1,6 +1,6 @@
 import argparse, json, os, errno
 
-
+TRAIN = True
 def parse_args():
     parser = argparse.ArgumentParser(description="StarCraft II agent A2C TensorFlow implementation")
     parser.add_argument("--max_mineral_cost",
@@ -19,9 +19,13 @@ def parse_args():
                         default="config.json", type=str,
                         help="Configuration file")
 
-    parser.add_argument("--train",
-                        default=True, type=bool,
-                        help="To train or not to train")
+    parser.add_argument("--train", dest="load_ckpt",
+                        default=not TRAIN, action="store_false",
+                        help="Set the train flag to start from scratch")
+
+    parser.add_argument("--test", dest="load_ckpt",
+                        default=not TRAIN, action="store_true",
+                        help="Set the test flag to load from checkpoint")
 
     parser.add_argument("--render",
                         default=True, type=bool,
