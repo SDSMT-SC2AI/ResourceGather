@@ -4,7 +4,7 @@ This project implements an A3C reinforcement learning agent to build bases and g
 using a restricted action space. The project fulfills the requirements of Senior Design (CSC465) at South Dakota School of Mines
 and Technology.
 
-![custom map](https://raw.githubusercontent/SDSMT-SC2AI/ResourceGather/images/DistanceMap.bmp)
+![custom map](images/DistanceMap.bmp)
 
 ## Dependencies
 
