@@ -17,7 +17,7 @@ from hyper_param_search import HyperParams
 
 
 def __main__(seed=None):
-    default_runs = 10
+    default_runs = 9
     seed_min = 0
     if seed != None:
         try:        
@@ -29,10 +29,13 @@ def __main__(seed=None):
             seed_min = int(sys.argv[2])
         except: #could be IndexError or ValueError
             seed_min = seed - default_runs
-    print("seed: {}\tseed_min: {}".format(seed, seed_min))
-    exit()
+
+        print("Running seed: {}  to  {}".format(seed, seed_min))
+    else:
+        print("Running random seed")
+    
     # Will short circuit the OR if seed is None (can't compare None to a number)
-    while seed == None or seed > seed_min:
+    while seed == None or seed >= seed_min:
         hp = HyperParams(seed)
         tf.reset_default_graph()   
 
