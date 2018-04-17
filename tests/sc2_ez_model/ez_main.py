@@ -15,25 +15,41 @@ import tests.sc2_ez_model.ez_actions as actions
 from hyper_param_search import HyperParams
 
 
-def __main__():
-    seed = 'harharhar'
-    while seed == 'harharhar':
+
+def __main__(seed=None):
+    default_runs = 10
+    seed_min = 0
+    if seed != None:
+        try:        
+            seed = int(seed)
+        except ValueError:
+            print("seed must be an integer or nothing at all")
+            exit()
+        try:
+            seed_min = int(sys.argv[2])
+        except: #could be IndexError or ValueError
+            seed_min = seed - default_runs
+    print("seed: {}\tseed_min: {}".format(seed, seed_min))
+    exit()
+    # Will short circuit the OR if seed is None (can't compare None to a number)
+    while seed == None or seed > seed_min:
         hp = HyperParams(seed)
         tf.reset_default_graph()   
 
         try:
             run_id = sys.argv[1]
         except IndexError:
-            run_id = "test_" + datetime.now().strftime("%Y%m%d%H%M%S")
-        print("Running", run_id)
+            run_id = "test_seed_" + datetime.now().strftime("%Y%m%d%H%M%S")
+
+        print("Running", seed)
         load_model = False
 
         agent_cls = agent.Smart
 
         agent.policy_spec.update(      
-                input_size=12,
+                input_size=27,
                 num_actions=len(actions.Action_Space.choices),
-                max_episodes=1000000,
+                max_episodes=10000,
                 q_range=(10, 10.01),
                 hidden_layer_size=hp.hidden_nodes,
                 base_explore_rate=hp.base_xplr_rate,
@@ -78,7 +94,7 @@ def __main__():
                         global_episodes=global_episodes,
                         buffer_min=480,
                         buffer_max=720,
-                        max_episodes=125000
+                        max_episodes=1250
                     )
                 )
             saver = tf.train.Saver(max_to_keep=5)
@@ -99,7 +115,14 @@ def __main__():
                 sleep(0.05)
                 worker_threads.append(t)
             coord.join(worker_threads)
-        seed = 'hahaha'
+
+        if seed == None:
+            break
+        else:
+            seed -= 1
 
 if __name__ == "__main__":
-    __main__()
+    try:
+        __main__(sys.argv[1])
+    except IndexError:
+        __main__()

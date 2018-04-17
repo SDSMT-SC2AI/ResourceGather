@@ -68,12 +68,12 @@ class Worker:
         return feed_back, env_obs
 
     def work(self, sess, coord, saver):
-        self.summary_writer.add_graph(sess.graph)
         checkpoint_steps = 0
 
         per_point = self.episodes_per_record
         episode_count = sess.run(self.global_episodes)
-        self.summary_writer.add_graph(sess.graph)
+        if self.number == 0:
+            self.summary_writer.add_graph(sess.graph)
         total_steps = 0
         print("Starting worker " + str(self.number))
         with sess.as_default(), sess.graph.as_default():
@@ -93,7 +93,7 @@ class Worker:
                 self.actions.reset()
                 self.agent.policy.reset()
                 reward, obs, episode_end = self.agent.process_observation(env_obs)
-
+                collected_last_ep = 0
                 while not episode_end:
                     choice, value = self.agent.step(sess, obs) 
                     feedback, env_obs = self.do_actions(choice, env_obs)
@@ -103,7 +103,8 @@ class Worker:
                         episode_buffer[i].append(v)
 
                     episode_values += value
-                    episode_reward += reward + feedback
+                    episode_reward += reward + feedback + (env_obs[0][1].resources_collected - collected_last_ep)
+                    collected_last_ep = env_obs[0][1].resources_collected
                     episode_step_count += 1
 
                     if episode_end:
@@ -134,7 +135,7 @@ class Worker:
                       "loss = {:13.4f}, "
                       "accuracy = {:13.4g}, "
                       "consistency = {:13.4g}, "
-                      "advantage = {:13.4g}, "
+                      "advantage = {:13.4f}, "
                       "reward = {:8.1f}, "
                       "minerals = {:8.1f}, ".format(
                         np.sum(self.main._episodes), loss, accuracy,
@@ -161,10 +162,6 @@ class Worker:
                 var_norms /= buffer_dumps
 
                 if episode_count % per_point == 0:
-                    if self.number == 0:
-                        summary_eh = tf.contrib.layers.summarize_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-                        self.summary_writer.add_summary(summary_eh, episode_count)
-
                     mean_reward = np.mean(self.episode_rewards)
                     mean_real_reward = np.mean(self.episode_real_rewards)
                     mean_value = np.mean(self.episode_mean_values)
@@ -188,5 +185,5 @@ class Worker:
                     else:
                         checkpoint_steps += 1
                         
-                    sess.run(self.increment)
+                sess.run(self.increment)
 

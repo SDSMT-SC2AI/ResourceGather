@@ -46,7 +46,7 @@ def process_observation(environ, action_space):
     minerals = np.array([env.minerals])
     used, supply = env.supply
     food_available = np.array([supply - used])
-    number_of_bases = np.array([len(env.bases) / 5])
+    number_of_bases = np.array([len(env.bases) / 20])
     larva_by_base = np.asarray(get_larva_by_base(env, env.bases))
     obs = np.concatenate([time, queens, spawn, drones, minerals, food_available, number_of_bases, larva_by_base])
     episode_end = (env.time_elapsed >= env.time_limit)
@@ -58,7 +58,7 @@ def get_larva_by_base(env, bases):
     base_larva = []
     for base in bases:
         base_larva.append(base.larva)
-    for i in range(5 - len(base_larva)):
+    for i in range(20 - len(base_larva)):
         base_larva.append(0)
     
     return base_larva
