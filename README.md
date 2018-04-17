@@ -10,7 +10,8 @@ and Technology.
 
 This project requires the following python libraries:
 
-- pysc2 (use our clone at linkme)
+- [pysc2](https://github.com/deepmind/pysc2) - We use a modified version of the pysc2 environment.
+(see [Details](#modifications-of-the-pysc2-rl-environment))
 - numpy
 - tensorflow
 
@@ -37,10 +38,10 @@ At it's simplest the model environment can be used like this, with plenty of
 other options for experimental purposes.
 
 ```buildoutcfg
-path_to_repo/ResourceGather$ python tests/sc2_ez_env/ez_main.py --train
+$ python tests/sc2_ez_env/ez_main.py --train
 Running workers...
 
-path_to_repo/ResourceGather$ python tests/sc2_ez_env/ez_main.py --help
+$ python tests/sc2_ez_env/ez_main.py --help
 usage: ez_main.py [-h] [--train | --test] [--logdir DIRNAME | --gendir]
                   [--hyper-parameter-search]
                   [--seed SEED | --seed_range LOWER UPPER]
@@ -68,7 +69,21 @@ optional arguments:
                         search, the seed is appended to logdir. (Default:
                         None)
 ```
+## Analysis with TensorBoard
 
+TensorFlow comes with a great tool for visualizing machine learning models constructed with their library called
+TensorBoard. It can be used to monitor training for the SC2 Model environment with:
+
+```buildoutcfg
+$ tensorboard --logdir=DIRNAME
+TensorBoard 1.7.0 at http://localhost:6006 (Press CTRL+C to quit)
+```
+
+Following the given link will bring up a page like:
+
+![tensorboard example](images/TensorBoard.png)
+
+A visualization of the TensorFlow graph for our implementation is available under the `Graphs` tab in the user interface.
 ## Running the Project
 
 **The main project code will not work in it's current state**
@@ -91,7 +106,9 @@ usage:
     --This feature is in development--
 ```
 
+## Modifications of the PySC2 RL Environment
 
-## Running Tests
-## Adding a Map
-## Documentation
+In order to define a smaller, high level action space for StarCraft II, we needed to pull in some of the raw
+game data provided through the [s2client-proto](https://github.com/Blizzard/s2client-proto) to make coding these
+compound actions easier. There is also important difficult to learn information that we do not think an agent
+can learn without a much more controlled training procedure.
