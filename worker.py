@@ -137,10 +137,14 @@ class Worker:
                       "consistency = {:13.4g}, "
                       "advantage = {:13.4f}, "
                       "reward = {:8.1f}, "
-                      "minerals = {:8.1f}, ".format(
+                      "minerals = {:8.1f}, "
+                      "explore rate = {:7.4f}".format(
                         np.sum(self.main._episodes), loss, accuracy,
                         consistency, advantage, episode_reward,
-                        env_obs[0][1].resources_collected))
+                        env_obs[0][1].resources_collected, 
+                        sess.run(self.agent.policy.exploration,feed_dict={
+                            self.agent.policy.exploration_rate: self.agent.policy.random_explore_rate
+                            })))
 
                 # Update the network using the episode buffer at the end of the episode
                 if len(episode_buffer) > self.buffer_min:

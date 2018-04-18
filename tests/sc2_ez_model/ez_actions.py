@@ -34,7 +34,7 @@ class Action_Space:
         # if (choice != 0):
             # print(choice)
         if choice < len(self.choices):
-            return 0.5*self.choices[choice](self, obs[1])
+            return self.choices[choice](self, obs[1])
         else:
             return self.choices[ActionEnum.no_op](self, obs[1])
 
