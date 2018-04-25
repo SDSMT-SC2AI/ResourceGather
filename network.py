@@ -30,7 +30,7 @@ class Trainer:
                 discounted_rewards = discount(self.rewards, self.hp.discount, self.values[-1])
 
                 self.accuracy_loss = tf.reduce_mean(tf.square(q - discounted_rewards)) * (1 - self.hp.discount)
-                self.consistent_loss = tf.reduce_mean(tf.square(q - self.values[1:]))
+                self.consistent_loss = tf.reduce_mean(tf.square(q - self.values[1:] - self.rewards))
                 self.advantage = tf.reduce_mean(q - tf.reduce_mean(policy.q, axis=1))
                 self.loss = self.hp.accuracy_coef * self.accuracy_loss + self.hp.consist_coef * self.consistent_loss - self.hp.advantage_coef * self.advantage
 

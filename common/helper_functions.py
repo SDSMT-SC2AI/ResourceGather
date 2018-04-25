@@ -101,4 +101,32 @@ def select_from(x, indices):
     return tf.gather_nd(x, idx)
 
 
+class BaseEvent(dict):
+    def __init__(self, args, calls=None):
+        super().__init__({"args": args, "calls": calls or []})
 
+    def condition(self):
+        raise NotImplementedError
+
+    def step(self):
+        if self.condition():
+            for call in self["calls"]:
+                call(self["args"])
+
+    def add_call(self, call):
+        self["calls"].append(call)
+
+
+class StepEvent(BaseEvent):
+    def __init__(self, args, interval, calls=None):
+        super().__init__(args, calls)
+        self.update(T=0, interval=interval)
+
+    def condition(self):
+        if self["T"] >= self["interval"]:
+            self["T"] = 0
+            return True
+
+    def step(self):
+        self["T"] += 1
+        super().step()

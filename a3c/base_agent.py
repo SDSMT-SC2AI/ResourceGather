@@ -1,4 +1,5 @@
 from common.helper_functions import update_target_graph
+import numpy as np
 
 
 class BaseAgent:
@@ -11,14 +12,19 @@ class BaseAgent:
         self.update_local_policy = update_target_graph(parent, name)
 
     def train(self, sess, actions,  observations, rewards, values):
-        return self.trainer.train(sess, actions, observations, rewards, values)
+        result = self.trainer.train(sess,
+                                    np.array(actions),
+                                    np.concatenate(observations),
+                                    np.array(rewards),
+                                    np.array(values))
+        self.sync(sess)
+        return result
 
     def step(self, sess, observation):
-        choice, value = self.policy.step(sess, observation)
-        return choice[0], value[0]
+        return self.policy.step(sess, observation)
 
-    def value(self, sess, obs):
-        return self.policy.get_value(sess, obs)[0]
+    def value(self, sess, observation):
+        return self.policy.value(sess, observation)
 
     @classmethod
     def setup_policy(cls, name, input_size, num_actions, **policy_kwargs):
@@ -28,7 +34,7 @@ class BaseAgent:
     def setup_trainer(cls, name, parent, optimizer, policy, **trainer_kwargs):
         return cls.trainer_cls(name, parent, optimizer, policy, **trainer_kwargs)
 
-    def update_policy(self, sess):
+    def sync(self, sess):
         sess.run(self.update_local_policy)
 
     def process_observation(self, obs):
