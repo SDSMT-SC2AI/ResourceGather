@@ -100,3 +100,8 @@ ENV/
 # mypy
 .mypy_cache/
 .idea/
+
+# Doxygen
+Doxyfile
+/latex
+/html

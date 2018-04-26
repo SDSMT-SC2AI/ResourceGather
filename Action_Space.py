@@ -1,7 +1,8 @@
-'''
-This contains a class designed to limit the action space for training purposes,
-as well as the functions needed to exicute the actions allowed in this space.
-'''
+## @package Action_Space
+# This contains a class designed to limit the action space for training purposes,
+# as well as the functions needed to exicute the actions allowed in this space.
+
+
 import os
 import sys
 from collections import deque
@@ -81,8 +82,13 @@ _TOP_GEYSER = [64,16]
 # 2nd Top Geyser
 _TOP_2ND_GEYSER = [24,48]
 
+
+
+##
+## @brief      Enumerator for actions.
+##
 class ActionEnum():
-    """Enumerator for alliance"""
+    
     build_Hatchery = 0
     build_Gas_Gyser = 1
     train_Drone = 2
@@ -93,8 +99,13 @@ class ActionEnum():
     harvest_Gas = 7
     no_op = 8
 
+
+
+
+##
+## @brief      Define the units and their actions.
+##
 class Action_Space:
-    # define the units and their actions
     valid_units = {126: ("Move_screen", "Effect_InjectLarva_screen"), #queen
        104: ("Move_screen", "Harvest_Gather_screen", "Build_Hatchery_screen", "Build_SpawningPool_screen", "Build_Extractor_screen"), #drone
        151: ("Train_Drone_quick", "Train_Overlord_quick"), #larva
@@ -105,6 +116,13 @@ class Action_Space:
     'number of actions': _MAX_AVAIL_ACTIONS # Actions should be in a dict or something so we can run len() etc. on them
     }
 
+
+
+    ##
+    ## @brief      Constructs the object.
+    ##
+    ## @param      self  The object
+    ##
     def __init__(self):
         self.busy_units = {}
         self.actionq = deque(["No_Op"]*10)
@@ -142,6 +160,16 @@ class Action_Space:
         #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas
         return
 
+
+
+
+    ##
+    ## @brief      Defines the start location.
+    ##
+    ## @param      self  The object
+    ## @param      obs   The observation
+    ##    
+    ##
     def Start_pos(self, obs):
         start_y, start_x = (obs.observation["minimap"][_PLAYER_RELATIVE]).nonzero()
         if start_y.mean() <= 31:
@@ -150,8 +178,17 @@ class Action_Space:
             self.top_left = False
 
 
-    # takes in the available actions from the observation (should be a list of action_ids) and returns a list of 0's and 1's with respect to our action space.
-    # 0 if the i_th action is not available, 1 if it is available. 
+    
+    ##
+    ## @brief      Takes in the available actions from the observation (should be a list of action_ids) 
+    ##             and returns a list of 0's and 1's with respect to our action space.
+    ##             0 if the i_th action is not available, 1 if it is available. 
+    ##
+    ## @param      self  The object
+    ## @param      obs   The observation
+    ##
+    ## @return     list of 0's and 1's of length(num_actions)
+    ##
     def check_available_actions(self, obs):
         #avalable functions: build_hatch, build_geyser, train_drone, train_overlord, train_queen, inject_larva, move_screen1, move_screen2, move_screen3, move_screen4, harvest_mins, harvest_gas        
         player_info = obs.observation["player"]
@@ -212,8 +249,19 @@ class Action_Space:
 
         return actions
 
-    # takes an integer action index  (corresponding to the i_th action in the action space)
-    # returns 1 if the action is available and can be added to the queue, -1 if not.
+    
+
+    ##
+    ## @brief      Takes an integer action index  (corresponding to the i_th action in the action space)
+    ##             returns 1 if the action is available and can be added to the queue, -1 if not.
+    ##
+    ## @param      self      The object
+    ## @param      index     The index
+    ## @param      obs       The observation
+    ## @param      drone_id  The drone identifier
+    ##
+    ## @return     Returns an integer reward value
+    ##
     def act(self, index, obs, drone_id=None):
         index = 7
         avalable = self.check_available_actions(obs)
@@ -225,6 +273,17 @@ class Action_Space:
         else:
             return -1
 
+
+
+    ##
+    ## @brief      This function inerprets the action queue and constructs arguments
+    ##             to be returned.
+    ##
+    ## @param      self     The object
+    ## @param      env_obs  The environment observeration
+    ##
+    ## @return     An action call and reward
+    ##
     def action_step(self, env_obs):
         if self.actionq:
             action = self.actionq.popleft()
@@ -256,7 +315,17 @@ class Action_Space:
             act_call = actions.FunctionCall(actions.FUNCTIONS.no_op.id, [])
             return act_call, -1
 
-    # Action space functions
+    
+
+
+    ##
+    ## @brief      Builds a hatchery.
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observeration
+    ## @param      drone_id  The drone identifier
+    ##
+    ##
     def build_Hatchery(self, obs, drone_id):
         #first select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -310,7 +379,18 @@ class Action_Space:
         self.actionq.append("move_camera")
         self.expo_count += 1
 
-    # Builds a geyser if one is taken it builds the other
+    
+
+
+    ##
+    ## @brief      Builds a gas gyser.
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observeration
+    ## @param      drone_id  The drone identifier
+    ##
+    ## @return     The gas gyser.
+    ##
     def build_Gas_Gyser(self, obs, drone_id):
         #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -337,6 +417,18 @@ class Action_Space:
             self.pointq.append(target1)
         self.actionq.append("Build_Extractor_screen")
 
+
+
+    ##
+    ## @brief      Queues the building of a spawning pool if one isn't already built or being
+    ##             built. 
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observeration
+    ## @param      drone_id  The drone identifier
+    ##
+    ## @return     Returns false unless the pool has finished constructing.
+    ##
     def build_Spawning_Pool(self, obs, drone_id):
         #step on is selecting a dron to build with
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -364,9 +456,18 @@ class Action_Space:
         self.actionq.append("Build_SpawningPool_screen")
         return False
     
-    #TODO integrate drone ID tags
+    
+
+
+    ##
+    ## @brief      Queues an action to have the selected unit harvest minerals.
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observation
+    ## @param      drone_id  The drone identifier
+    ##
+    ##
     def harvest_Minerals(self, obs, drone_id):
-        #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
         unit_y, unit_x = (units == _DRONE).nonzero()
         if len(unit_x) == 0:
@@ -392,7 +493,15 @@ class Action_Space:
         self.actionq.append("Smart_Click")
 
 
-    #TODO integrate drone ID tags
+    
+    ##
+    ## @brief      Queues an action to have the selected unit harvest gas.
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observation
+    ## @param      drone_id  The drone identifier
+    ##
+    ##
     def harvest_Gas(self, obs, drone_id):
         #select a drone
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -424,6 +533,17 @@ class Action_Space:
         # self.pointq.append(target)        
         # self.actionq.append("Smart_Click")
 
+
+
+
+    ##
+    ## @brief      Queues an action to have the selected queen inject a Hatchery.
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observation
+    ## @param      queen_id  The queen identifier
+    ##
+    ##
     def inject_Larva(self, obs, queen_id):
         #select a queen
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -443,38 +563,51 @@ class Action_Space:
         self.pointq.append(target)
         self.actionq.append("Effect_InjectLarva_screen")
         
-    def move_Screen1(self, obs, base_num):
-       if self.top_left:
-            map_target = _TOP_START
-       else:
-           map_target = _BOTTOM_START
-       self.pointq.append(map_target)
-       self.actionq.append("move_camera")
 
-    def move_Screen2(self, obs, base_num):
-       if self.top_left:
-            map_target = _TOP_SECOND
-       else:
-           map_target = _BOTTOM_SECOND
-       self.pointq.append(map_target)
-       self.actionq.append("move_camera")
 
-    def move_Screen3(self, obs, base_num):
-       if self.top_left:
-            map_target = _TOP_THIRD
-       else:
-           map_target = _BOTTOM_THIRD
-       self.pointq.append(map_target)
-       self.actionq.append("move_camera")
 
-    def move_Screen4(self, obs, base_num):
-       if self.top_left:
-            map_target =  _TOP_FOURTH
-       else:
-           map_target = _BOTTOM_FOURTH
-       self.pointq.append(map_target)
-       self.actionq.append("move_camera")
+    # def move_Screen1(self, obs, base_num):
+    #    if self.top_left:
+    #         map_target = _TOP_START
+    #    else:
+    #        map_target = _BOTTOM_START
+    #    self.pointq.append(map_target)
+    #    self.actionq.append("move_camera")
 
+    # def move_Screen2(self, obs, base_num):
+    #    if self.top_left:
+    #         map_target = _TOP_SECOND
+    #    else:
+    #        map_target = _BOTTOM_SECOND
+    #    self.pointq.append(map_target)
+    #    self.actionq.append("move_camera")
+
+    # def move_Screen3(self, obs, base_num):
+    #    if self.top_left:
+    #         map_target = _TOP_THIRD
+    #    else:
+    #        map_target = _BOTTOM_THIRD
+    #    self.pointq.append(map_target)
+    #    self.actionq.append("move_camera")
+
+    # def move_Screen4(self, obs, base_num):
+    #    if self.top_left:
+    #         map_target =  _TOP_FOURTH
+    #    else:
+    #        map_target = _BOTTOM_FOURTH
+    #    self.pointq.append(map_target)
+    #    self.actionq.append("move_camera")
+
+
+
+    ##
+    ## @brief      Queues a train Drone action.
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observation
+    ## @param      larva_id  The larva identifier
+    ##
+    ##
     def train_Drone(self, obs, larva_id):
         #find larva position
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -495,6 +628,18 @@ class Action_Space:
         self.actionq.append("select_larva")
         self.actionq.append("Train_Drone_quick")        
                 
+
+
+
+    ##
+    ## @brief      Queues a train Overlord action.
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observation
+    ## @param      drone_id  The drone identifier
+    ##
+    ## @return     { description_of_the_return_value }
+    ##
     def train_Overlord(self, obs, drone_id):
         #find larva position
         units = obs.observation["screen"][_UNIT_TYPE]
@@ -508,6 +653,17 @@ class Action_Space:
         self.actionq.append("Select_Point_screen")
         self.actionq.append("Train_Overlord_quick")
 
+
+
+
+    ##
+    ## @brief      Queues a train Queen action.
+    ##
+    ## @param      self      The object
+    ## @param      obs       The observation
+    ## @param      hatch_id  The hatch identifier
+    ##
+    ##
     def train_Queen(self, obs, hatch_id):
         #if no pool is built redirect to building it instead
         if not self.pool_flag:
@@ -525,7 +681,15 @@ class Action_Space:
         #que a queen
         self.actionq.append("Train_Queen_quick")
         
-    #function for checking if drones are doing a non-interuptable task
+    
+
+    ##
+    ## @brief      Function for checking if drones are doing a non-interuptable task
+    ##
+    ## @param      drone_id  The drone identifier
+    ##
+    ## @return     True if busy, False otherwise
+    ##
     def drone_busy(drone_id):
         if drone_id in busy_units:
             return True
@@ -533,8 +697,14 @@ class Action_Space:
 
 
 
+##
+## @brief      Main function to execute this file independently if we desire it.
+##
+##
 def main():
     return
+
+
 
 if __name__ == '__main__':
     main()
