@@ -566,37 +566,37 @@ class Action_Space:
 
 
 
-    # def move_Screen1(self, obs, base_num):
-    #    if self.top_left:
-    #         map_target = _TOP_START
-    #    else:
-    #        map_target = _BOTTOM_START
-    #    self.pointq.append(map_target)
-    #    self.actionq.append("move_camera")
+    def move_Screen1(self, obs, base_num):
+       if self.top_left:
+            map_target = _TOP_START
+       else:
+           map_target = _BOTTOM_START
+       self.pointq.append(map_target)
+       self.actionq.append("move_camera")
 
-    # def move_Screen2(self, obs, base_num):
-    #    if self.top_left:
-    #         map_target = _TOP_SECOND
-    #    else:
-    #        map_target = _BOTTOM_SECOND
-    #    self.pointq.append(map_target)
-    #    self.actionq.append("move_camera")
+    def move_Screen2(self, obs, base_num):
+       if self.top_left:
+            map_target = _TOP_SECOND
+       else:
+           map_target = _BOTTOM_SECOND
+       self.pointq.append(map_target)
+       self.actionq.append("move_camera")
 
-    # def move_Screen3(self, obs, base_num):
-    #    if self.top_left:
-    #         map_target = _TOP_THIRD
-    #    else:
-    #        map_target = _BOTTOM_THIRD
-    #    self.pointq.append(map_target)
-    #    self.actionq.append("move_camera")
+    def move_Screen3(self, obs, base_num):
+       if self.top_left:
+            map_target = _TOP_THIRD
+       else:
+           map_target = _BOTTOM_THIRD
+       self.pointq.append(map_target)
+       self.actionq.append("move_camera")
 
-    # def move_Screen4(self, obs, base_num):
-    #    if self.top_left:
-    #         map_target =  _TOP_FOURTH
-    #    else:
-    #        map_target = _BOTTOM_FOURTH
-    #    self.pointq.append(map_target)
-    #    self.actionq.append("move_camera")
+    def move_Screen4(self, obs, base_num):
+       if self.top_left:
+            map_target =  _TOP_FOURTH
+       else:
+           map_target = _BOTTOM_FOURTH
+       self.pointq.append(map_target)
+       self.actionq.append("move_camera")
 
 
 
