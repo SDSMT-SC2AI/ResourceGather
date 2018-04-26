@@ -1,3 +1,7 @@
+## @mainpage
+##  This is the primary entry point for our program.
+##  
+
 import common.parse_args
 import os
 from absl.flags import FLAGS
@@ -55,6 +59,22 @@ flags.DEFINE_integer("max_bases", 5,
 '''
 
 
+
+##
+## @brief   This is the primary entry point for our program. Initial flags are set via parse_args().
+##          The agent is then initialized and the policy_spec is updated. We ensure the map is loaded then
+##          reset the TensorFlow graph in case anything was still residing in memory. The TensorFlow device
+##          gets configured and we initialize the global episodes to zero, setup the optimizer, and define 
+##          the number of workers.
+##       
+##          Global values are then declared so they can be initialized. The worker list is created and 
+##          filled with however many workers were defined earlier. For each worker we initialize a 
+##          StarCraft II environment and fill the worker with the necessary data for it to run.
+##        
+##          We then begin a TensorFlow session and initialize worker threads for each worker. The workers 
+##          will continue to run until all episodes have been completed.
+##
+##
 def main():
     max_episode_length = 300
     load_model = False
@@ -86,8 +106,8 @@ def main():
         global_episodes = tf.Variable(0, dtype=tf.int32, name="global_episodes", trainable=False)
         optimizer = tf.train.AdamOptimizer(learning_rate=0.005)
         master_network = agent.network.Policy('global', global_episodes, agent.policy_spec)
-        # num_workers = psutil.cpu_count()
-        num_workers = 1 # Hardcoded to one for quicker testing
+        num_workers = psutil.cpu_count()
+        # num_workers = 1 # Hardcoded to one for quicker testing
 
         global _max_score, _running_avg_score, _steps, _episodes
         _max_score = 0

@@ -1,10 +1,33 @@
+##
+## @package network This is the primary file for the A3C network. It contains
+## the train class as well as the policy class
+##
 import tensorflow as tf
 import numpy as np
 from common.helper_functions import bisection, discount, select_from
 
 
+
+##
+## @brief      This is the trainer class for our network. It defines the
+##             TensorFlow graph nodes that will be used to calculate loss, run
+##             optimizers, and apply gradients to our network.
+##
 class Trainer:
+
+
     @staticmethod
+    ##
+    ## @brief      This is the trainer specifications.
+    ##
+    ## @param      accuracy_coefficient     The accuracy coefficient
+    ## @param      advantage_coefficient    The advantage coefficient
+    ## @param      consistency_coefficient  The consistency coefficient
+    ## @param      max_grad_norm            The maximum graduated normalize, aka grad clipping value
+    ## @param      discount_factor          The discount factor
+    ##
+    ## @return     Returns a dictionary of the items passed in.
+    ##
     def trainer_spec(accuracy_coefficient=1.0,
                      advantage_coefficient=10.0,
                      consistency_coefficient=3.0,
@@ -18,6 +41,18 @@ class Trainer:
             'discount factor': discount_factor
         }
 
+
+
+    ##
+    ## @brief      Constructs the object and initializes the TensorFlow graph.
+    ##
+    ## @param      self          The object
+    ## @param      scope         The scope
+    ## @param      optimizer     The optimizer
+    ## @param      policy        The policy
+    ## @param      trainer_spec  The trainer specifications
+    ## @param      hyper_params  The hyper parameters
+    ##
     def __init__(self, scope, optimizer, policy, trainer_spec, hyper_params):
         self.policy = policy
         self.hp = hyper_params
@@ -44,6 +79,26 @@ class Trainer:
             global_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'global')
             self.apply_grads = optimizer.apply_gradients(zip(grads, global_vars))
 
+
+
+
+    ##
+    ## @brief      The train function is called when the buffer is full or
+    ##             episode quantity met. This calls for a TensorFlow session to
+    ##             be ran. It passes in the feed_dict items and returns the
+    ##             fetches list items. TensorFlow will know that it needs to
+    ##             fetch self.loss so it will expect everything necessary to
+    ##             calculate it in the feed_dict.
+    ##
+    ## @param      self     The object
+    ## @param      sess     The sess
+    ## @param      obs      The obs
+    ## @param      actions  The actions
+    ## @param      rewards  The rewards
+    ## @param      values   The values
+    ##
+    ## @return     A list of lists.
+    ##
     def train(self, sess, obs, actions, rewards, values):
         return sess.run(
             fetches=[[
@@ -63,8 +118,31 @@ class Trainer:
         )[0]
 
 
+
+
+
+##
+## @brief      The Policy class defines the basic structure of the network such
+##             as how the hidden layers are setup.
+##
 class Policy:
+
+
+
     @staticmethod
+    ##
+    ## @brief      Creates a dictionary of policy_spec values to be returned.
+    ##
+    ## @param      input_size         The input size
+    ## @param      num_actions        The number actions
+    ## @param      max_episodes       The maximum episodes
+    ## @param      q_range            The quarter range
+    ## @param      hidden_layer_size  The hidden layer size
+    ## @param      base_explore_rate  The base explore rate
+    ## @param      min_explore_rate   The minimum explore rate
+    ##
+    ## @return     Returns a dictionary of the items passed in.
+    ##
     def policy_spec(input_size=None,
                     num_actions=None,
                     max_episodes=None,
@@ -82,6 +160,20 @@ class Policy:
             "max_episodes": max_episodes
         }
 
+
+
+
+    ##
+    ## @brief      Constructs the object. Defines the structure of the network
+    ##             and sets up the TensorFlow graph. The input layer as well as
+    ##             hidden layers and output are 
+    ##
+    ## @param      self          The object
+    ## @param      scope         The scope
+    ## @param      episode       The episode
+    ## @param      policy_spec   The policy specifier
+    ## @param      hyper_params  The hyper parameters
+    ##
     def __init__(self, scope, episode, policy_spec, hyper_params):
         self.hyper_params = hyper_params
         self.network_spec = policy_spec
@@ -132,14 +224,51 @@ class Policy:
             self.action = tf.reshape(tf.multinomial(tf.log(self.probs), 1), [-1])
             self.value = tf.reduce_sum(self.probs * self.q, axis=1) / tf.reduce_sum(self.probs, axis=1)
 
+
+
+
+    ##
+    ## @brief      On an episode reset we want to reset the random explore rate.
+    ##
+    ## @param      self  The object
+    ##
+    ##
     def reset(self):
         self.random_explore_rate = np.random.beta(self.hyper_params.alpha, self.hyper_params.beta)
 
+
+
+
+    ##
+    ## @brief      The network needs to step through iterations with the
+    ##             environment, this is the function to accomplish this. Runs a
+    ##             TensorFlow session to calculate the action and value that
+    ##             help steer the network and training.
+    ##
+    ## @param      self  The object
+    ## @param      sess  The session
+    ## @param      obs   The observation
+    ##
+    ## @return     A list containing the action and value.
+    ##
     def step(self, sess, obs):
         return sess.run(fetches=[self.action, self.value],  # returns
                         feed_dict={self.input: obs,
                                    self.exploration_rate: self.random_explore_rate})  # input
 
+
+
+
+    ##
+    ## @brief      Gets the value by running a TensorFlow session and
+    ##             calculating the value as it runs through the graph.
+    ##
+    ## @param      self  The object
+    ## @param      sess  The session
+    ## @param      obs   The observation
+    ##
+    ## @return     The value.
+    ##
     def get_value(self, sess, obs):
         return sess.run(fetches=self.value,  # returns
                         feed_dict={self.input: obs,

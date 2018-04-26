@@ -1,3 +1,8 @@
+##
+## @package worker This is the worker class that is spun up for every available
+## thread.
+##
+
 import tensorflow as tf
 import numpy as np
 from common.parse_args import ensure_dir
@@ -5,8 +10,34 @@ from common.parse_args import ensure_dir
 mse = tf.losses.mean_squared_error
 
 
+
+##
+## @brief      Class for worker. Workers execute their own environment as well
+##             as push and pull values to and from the global network.
+##
 class Worker:
-    def __init__(self, number, main, env, actions, agent, global_episodes, *,
+
+
+    ##
+    ## @brief      Constructs the object and initializes member variables.
+    ##
+    ## @param      self                           The object
+    ## @param      number                         The number
+    ## @param      main                           The main
+    ## @param      env                            The environment
+    ## @param      actions                        The actions
+    ## @param      agent                          The agent
+    ## @param      global_episodes                The global episodes
+    ## @param      name                           The name
+    ## @param      model_path                     The model path
+    ## @param      summary_dir                    The summary directory
+    ## @param      episodes_per_record            The episodes per record
+    ## @param      episodes_for_model_checkpoint  The episodes for model checkpoint
+    ## @param      buffer_min                     The buffer minimum
+    ## @param      buffer_max                     The buffer maximum
+    ## @param      max_episodes                   The maximum episodes
+    ##
+    def __init__(self, number, main, env, actions, agent, global_episodes,
                  # keyword args
                  name=None, model_path=None, summary_dir="workerData/",
                  episodes_per_record=10, episodes_for_model_checkpoint=250,
@@ -35,6 +66,21 @@ class Worker:
         self.actions = actions
         self.env = env
 
+
+
+    ##
+    ## @brief      Workers train when episode buffers are full or after so many
+    ##             episodes. This function calls agent.train and updates the
+    ##             policy.
+    ##
+    ## @param      self             The object
+    ## @param      rollout          The rollout
+    ## @param      sess             The session
+    ## @param      bootstrap_value  The bootstrap value
+    ##
+    ## @return     Returns the network loss, accuracy, consistency, advantage,
+    ##             grad_norms, and var_norms.
+    ##
     def train(self, rollout, sess, bootstrap_value):
         actions = np.array(rollout[0])
         rewards = np.array(rollout[1])
@@ -55,6 +101,18 @@ class Worker:
             grad_norms, \
             var_norms
 
+
+
+
+    ##
+    ## @brief      Has the environment execute actions.
+    ##
+    ## @param      self     The object
+    ## @param      choice   The choice
+    ## @param      env_obs  The environment observation
+    ##
+    ## @return     Reward feedback and the updated environment observation.
+    ##
     def do_actions(self, choice, env_obs):
         feed_back = self.actions.act(choice, env_obs[0])
 
@@ -67,6 +125,23 @@ class Worker:
 
         return feed_back, env_obs
 
+
+
+
+    ##
+    ## @brief      This is the function that the worker spends most of it's time
+    ##             operating. Workers run a session where they reset everything
+    ##             and then run an instance of the environment. The environment
+    ##             will run until the episode is finished, at which point
+    ##             globals are pulled down and the values this worker generated
+    ##             are pushed up.
+    ##
+    ## @param      self   The object
+    ## @param      sess   The session
+    ## @param      coord  The coordinator
+    ## @param      saver  The saver
+    ##
+    ##
     def work(self, sess, coord, saver):
         if self.number == 0:
             self.summary_writer.add_graph(sess.graph)
