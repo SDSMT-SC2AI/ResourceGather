@@ -6,7 +6,7 @@ from common.helper_functions import bisection, discount, select_from
 class BaseTrainer:
     def __init__(self, scope, parent, optimizer, policy, *,
                  # key word arguments
-                 discount_rate=0.99, advantage_nerf=0.2):
+                 discount_rate=0.99, consistency_factor=0.1, advantage_factor=0.1):
         self.policy = policy
         with tf.variable_scope(scope):
             with tf.name_scope("Trainer"):
@@ -14,25 +14,26 @@ class BaseTrainer:
                 self.rewards = tf.placeholder(shape=[None], dtype=tf.float32, name="rewards")
                 self.values = tf.placeholder(shape=[None], dtype=tf.float32, name="values")
                 q = select_from(policy.q, self.actions)
+                p = select_from(policy.probs, self.actions)
                 discounted_rewards = discount(self.rewards, discount_rate, self.values[-1])
 
                 # Compute losses
                 self.accuracy_loss = tf.multiply(
                     (1 - discount_rate),
-                    tf.reduce_mean(tf.square(
-                        tf.nn.leaky_relu(discounted_rewards - q, advantage_nerf)
-                    )),
+                    tf.reduce_sum((1 - p) * tf.square(discounted_rewards - q)),
                     name="AccuracyLoss"
                 )
-                self.consistent_loss = tf.reduce_mean(
-                    tf.square(q - self.values[1:]),
+                self.consistent_loss = tf.reduce_sum(
+                    tf.square(q - self.values[1:] - self.rewards),
                     name="ConsistencyLoss"
                 )
-                self.advantage = tf.reduce_mean(
-                    (1 - select_from(policy.probs, self.actions)) * (tf.reduce_max(policy.q) - q),
+                self.advantage = tf.reduce_sum(
+                    (1 - p) * tf.square(tf.reduce_mean(policy.q) - q),
                     name="AdvantageLoss"
                 )
-                self.loss = tf.add_n([self.accuracy_loss], name="Loss")
+                self.loss = tf.add_n([self.accuracy_loss,
+                                      consistency_factor * self.consistent_loss,
+                                      advantage_factor * self.advantage], name="Loss")
 
                 # Get gradients from local network using local losses
                 local_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
@@ -44,7 +45,7 @@ class BaseTrainer:
                 self.apply_grads = optimizer.apply_gradients(zip(grads, global_vars))
 
     @staticmethod
-    def trainer_kwargs(discount_rate=0.99, advantage_nerf=0.2):
+    def trainer_kwargs(discount_rate=0.99, consistency_factor=0.1, advantage_factor=0.1):
         return locals()
 
     def get_gradients(self, local_vars):

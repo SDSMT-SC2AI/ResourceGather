@@ -6,6 +6,7 @@ from tests.oop_env_test.actions import ActionSpace
 from tests.oop_env_test.env import SimpleEnv
 from tests.oop_env_test.worker import Worker
 from a3c.base_main import BaseMain
+import tensorflow as tf
 
 
 def should_stop(episode_step_count, **_):
@@ -17,6 +18,7 @@ class Main(BaseMain):
     def __init__(self, load_model=False, max_episodes=2000,
                  buffer_min=10, buffer_max=30):
         super().__init__(load_model, max_episodes, buffer_min, buffer_max)
+        self.get_optimizer = lambda: tf.train.AdamOptimizer(learning_rate=0.01)
         self.policy_kwargs = Simple.policy_kwargs(num_actions=len(ActionSpace.choices),
                                                   episode=None,
                                                   hidden_layer_size=1,

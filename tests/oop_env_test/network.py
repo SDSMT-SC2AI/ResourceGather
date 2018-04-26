@@ -7,11 +7,10 @@ from a3c.base_network import BasePolicy, BaseTrainer
 
 class Trainer(BaseTrainer):
     def __init__(self, scope, parent, optimizer, policy, *,
-                 discount_rate=0.99, advantage_nerf=0.2, max_grad_norm=5.0):
+                 discount_rate=0.99, consistency_factor=0.1, advantage_factor=0.1, max_grad_norm=5.0):
         self.max_grad_norm = max_grad_norm
         super().__init__(scope, parent, optimizer, policy,
-                         discount_rate=discount_rate,
-                         advantage_nerf=advantage_nerf)
+                         discount_rate=0.99, consistency_factor=0.1, advantage_factor=0.1)
 
     def get_gradients(self, local_vars):
         self.gradients = tf.gradients(self.loss, local_vars, name="Gradients")
@@ -19,7 +18,7 @@ class Trainer(BaseTrainer):
         return grads
 
     @staticmethod
-    def trainer_kwargs(discount_rate=0.99, advantage_nerf=0.2, max_grad_norm=5.0):
+    def trainer_kwargs(discount_rate=0.99, consistency_factor=0.1, advantage_factor=0.1, max_grad_norm=5.0):
         return locals()
 
 
